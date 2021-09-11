@@ -1,0 +1,129 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <math.h>
+#include "datafiltering.h"
+
+double** read_data(char* file_name, int row_size, int column_size)
+{
+    FILE *fp;
+    fp = fopen(file_name, "r");
+
+    static double** data;
+    data = (double *)malloc(row_size * sizeof(double *));
+    for (int i=0; i<row_size; i++)
+         data[i] = (double *)malloc(column_size * sizeof(double));
+
+    unsigned long int line_size = 1000000;
+    char line[line_size];
+    char *result = NULL;
+    int row = 0;
+    int column = 0;
+    double value = 0;
+
+    while(fgets(line, line_size, fp) != NULL) {
+
+        result = strtok(line, ",");
+
+        while( result != NULL ) {
+            value = atof(result);
+            data[row][column] = value;
+            result = strtok(NULL, ",");
+            column += 1;
+        }
+        row += 1;
+        column = 0;
+    }
+
+    fclose (fp);
+    return data;
+}
+
+void dft_r2c_1d(int N)
+{
+    int digs = DECIMAL_DIG;
+    double *in;
+    fftw_complex *out;
+    in = (fftw_complex*) fftw_malloc(sizeof(double) * N);
+    out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
+
+    //double** fft_input = read_data("con_emg_cell{2,1}.csv", 19, 5601);
+
+    double** fft_input = read_data("fft_input.csv", 1, 256);
+    for(int i=0; i< N; i++)
+    {
+        in[i] = fft_input[0][i];
+    }
+
+
+    fftw_plan p = fftw_plan_dft_r2c_1d(N, in, out, FFTW_ESTIMATE );
+    fftw_execute(p);
+    FILE *fpt = fopen( "fft_r2c_result.csv","w" );
+    for(int i=0; i< N; i++)
+    {
+        //printf("%d : %.*e %.*e\n", i, digs, out[i][0], digs, out[i][1]);
+        fprintf(fpt,"%.*e+%.*ei,", digs, out[i][0], digs, out[i][1]);
+    }
+    fclose(fpt);
+
+
+    fftw_plan p2 = fftw_plan_dft_c2r_1d(N, out, in, FFTW_ESTIMATE );
+    fftw_execute(p2);
+
+
+    fftw_destroy_plan(p);
+    fftw_destroy_plan(p2);
+
+    FILE *fpt2 = fopen( "fft_c2r_result.csv","w" );
+    for(int i=0; i< N; i++)
+    {
+        printf("%d : %.*e\n", i, digs, in[i]/N);
+        fprintf(fpt,"%.*e,", digs, in[i]/N);
+    }
+    fclose(fpt2);
+
+    fftw_free(in);
+    fftw_free(out);
+}
+
+void write_to_file(char file_name[], double** data, int row_size, int column_size)
+{
+    FILE *fpt = fopen( file_name,"w" );
+    for(int i=0; i< row_size; i++)
+    {
+        for(int j=0; j< column_size; j++)
+        {
+            fprintf(fpt,"%f,", data[i][j]);
+        }
+        fprintf(fpt,"\n");
+    }
+    fclose(fpt);
+}
+
+struct ASR_PSW
+{
+    double sampling_rate;
+    double cutoff;
+    double filter_A[9];
+    double filter_B[9];
+};
+
+int main()
+{
+    int sampling_rate = 200;
+
+    double** test_unclean = read_data("con_emg_cell{2,1}.csv", 19, 5601);
+    double** test_clean = read_data("pure_data_cell{2,1}.csv", 19, 5601);
+    //printf("%lf\n%lf\n", *test_unclean[0][0], *test_clean[0][0]);
+
+    test_clean = data_filtering(test_clean, 19, 5601, sampling_rate);
+    write_to_file("test_clean.csv", test_clean, 19, 5601);
+
+    test_unclean = data_filtering(test_unclean, 19, 5601, sampling_rate);
+    write_to_file("test_unclean.csv", test_unclean, 19, 5601);
+
+
+    //dft_r2c_1d(256);
+
+    return 0;
+}
