@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include "datafiltering.h"
+#include "ASR.h"
 
 double** read_data(char* file_name, int row_size, int column_size)
 {
@@ -100,14 +101,6 @@ void write_to_file(char file_name[], double** data, int row_size, int column_siz
     fclose(fpt);
 }
 
-struct ASR_PSW
-{
-    double sampling_rate;
-    double cutoff;
-    double filter_A[9];
-    double filter_B[9];
-};
-
 int main()
 {
     int sampling_rate = 200;
@@ -121,6 +114,11 @@ int main()
 
     test_unclean = data_filtering(test_unclean, 19, 5601, sampling_rate);
     write_to_file("test_unclean.csv", test_unclean, 19, 5601);
+
+    // create ASR
+    ASR_PSW my_ASR = create_ASR(20, sampling_rate);
+
+
 
 
     //dft_r2c_1d(256);
