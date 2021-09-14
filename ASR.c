@@ -26,3 +26,25 @@ ASR_PSW create_ASR(int cutoff, int sampling_rate)
 
     return the_ASR;
 }
+
+void update_ASR(ASR_PSW* the_ASR, double** data)
+{    if(!*the_ASR->M)
+    {
+        subspace_ASR(the_ASR, data);
+    }
+
+}
+
+void subspace_ASR(ASR_PSW* the_ASR, double** data)
+{
+    find_clean_ASR(the_ASR, data);
+
+}
+
+void find_clean_ASR(ASR_PSW* the_ASR, double** data)
+{
+    int clwin_window_len = 1;
+    int window_overlap = 0.66;
+
+
+}
