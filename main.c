@@ -1,9 +1,7 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <math.h>
 #include "datafiltering.h"
 #include "ASR.h"
+#include "2d_array.h"
+
 
 double** read_data(char* file_name, int row_size, int column_size)
 {
@@ -104,7 +102,7 @@ void write_to_file(char file_name[], double** data, int row_size, int column_siz
 int main()
 {
     int sampling_rate = 200;
-    int channel = 19;
+    int channels = 19;
     double** test_unclean = read_data("con_emg_cell{2,1}.csv", 19, 5601);
     double** test_clean = read_data("pure_data_cell{2,1}.csv", 19, 5601);
     //printf("%lf\n%lf\n", *test_unclean[0][0], *test_clean[0][0]);
@@ -123,7 +121,10 @@ int main()
 
 
     // create ASR
-    ASR_PSW my_ASR = create_ASR(20, sampling_rate);
+    ASR_PSW my_ASR = create_ASR(20, sampling_rate, channels);
+    my_ASR.data_length = 48000;
+
+    update_ASR(&my_ASR, unclean_data);
 
 
 
