@@ -117,6 +117,36 @@ void find_clean_ASR(ASR_PSW* the_ASR, double** data)
             sum[i] = sqrt(sum[i]/N);
         }
 
+        double* mu_and_sig;
+        mu_and_sig = test_eeg_dist_revi(sum, offset_size, min_clean_fraction, max_dropout_fraction, truncate_quant, clwin_step_sizes, shape_range);
+
     }
 
 }
+
+double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, double max_dropout_fraction, double* truncate_quant, double* clwin_step_sizes, double* shape_range)
+{
+    double* mu_and_sig[2];
+    int n = X_size;
+
+    qsort(X, (size_t)n, sizeof(double), dcomp);
+
+    for(int i=0; i<n; i++)
+    {
+        printf("%d : %f\n", i, X[i]);
+    }
+
+
+    return mu_and_sig;
+}
+
+int dcomp (const void * elem1, const void * elem2)
+{
+    double f = *((double*)elem1);
+    double s = *((double*)elem2);
+    if (f > s) return  1;
+    if (f < s) return -1;
+    return 0;
+}
+
+

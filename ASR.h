@@ -13,5 +13,6 @@ typedef struct ASR_PSW
 
 ASR_PSW create_ASR(int cutoff, int sampling_rate, int channels);
 
+double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, double max_dropout_fraction, double* truncate_quant, double* clwin_step_sizes, double* shape_range);
 
-
+int dcomp (const void * elem1, const void * elem2);
