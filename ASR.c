@@ -124,16 +124,88 @@ void find_clean_ASR(ASR_PSW* the_ASR, double** data)
 
 }
 
-double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, double max_dropout_fraction, double* truncate_quant, double* clwin_step_sizes, double* shape_range)
+double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, double max_dropout_fraction, double* quants, double* step_sizes, double* beta)
 {
     double* mu_and_sig[2];
     int n = X_size;
 
     qsort(X, (size_t)n, sizeof(double), dcomp);
 
-    for(int i=0; i<n; i++)
+    double gama_inverse[13][2] = {{-1.60862458455965,0.182115306908469},
+                                  {-1.50450959704516,0.180266821894673},
+                                  {-1.42417727110355,0.179143454621292},
+                                  {-1.36063558014906,0.178505967053939},
+                                  {-1.30933712563468,0.178199325699606},
+                                  {-1.26720913658822,0.178120305557329},
+                                  {-1.23210755288029,0.178198673402093},
+                                  {-1.20249492545494,0.178385807546646},
+                                  {-1.17724258667216,0.178647578848539},
+                                  {-1.15550487523500,0.178959768933642},
+                                  {-1.13663673415458,0.179305049360544},
+                                  {-1.12013828424610,0.179670948476032},
+                                  {-1.10561666439142,0.180048458596905}};
+
+    double rescale[13] = {0.560384511868011,
+                          0.562928077207612,
+                          0.564189583547756,
+                          0.564583630220663,
+                          0.564388419735723,
+                          0.563793492242989,
+                          0.562929662214962,
+                          0.561888180766006,
+                          0.560733236562082,
+                          0.559510254710613,
+                          0.558251494699939,
+                          0.556979881664586,
+                          0.555711663295697};
+
+    double lower_min = quants[0];
+    double max_width = quants[1] - quants[0];
+    double min_width = min_clean_fraction*max_width;
+
+    int tmp_size = (int)round(n*max_width);
+    double tmp1[tmp_size];
+    for(int i=0; i<tmp_size; i++)
     {
-        printf("%d : %f\n", i, X[i]);
+        tmp1[i] = i+1;
+    }
+
+    double tmp2[11] = {0.0220,0.0320,0.0420,0.0520,0.0620,0.0720,0.0820,0.0920,0.1020,0.1120,0.1220};
+    for(int i=0; i<11; i++)
+    {
+        tmp2[i] = round(n * tmp2[i]);
+    }
+
+    int bsxfun_plus[tmp_size][11];
+    for(int i=0; i<tmp_size; i++)
+    {
+        for(int j=0; j<11; j++)
+        {
+            bsxfun_plus[i][j] = tmp1[i] + tmp2[j];
+        }
+    }
+
+    double new_X[tmp_size][11];
+    for(int i=0; i<tmp_size; i++)
+    {
+        for(int j=0; j<11; j++)
+        {
+            new_X[i][j] = X[bsxfun_plus[i][j] - 1];
+        }
+    }
+
+    double X1[11];
+    for(int i=0; i<11; i++)
+    {
+        X1[i] = new_X[0][i];
+    }
+
+    for(int i=0; i<tmp_size; i++)
+    {
+        for(int j=0; j<11; j++)
+        {
+            new_X[i][j] = new_X[i][j] - X1[j];
+        }
     }
 
 
