@@ -208,6 +208,34 @@ double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, dou
         }
     }
 
+    double m[44];
+    double j=0.578;
+    for(int i=0; i<44; i++, j-=step_sizes[1])
+    {
+        m[i] = round(j*n);
+    }
+    int new_size = remove_duplicated(m, 44); // now m is a new_size big array with no duplicated element
+
+    qsort(m, (size_t)44, sizeof(double), dcomp);
+
+    for(int i=0; i<new_size; i++)
+    {
+        nbins = round(3 * log2(1 + m[i]/2));
+
+        double divide[11];
+        for(int j=0; j<11; j++)
+        {
+            divide[j] = nbins/new_X[m[i]][j];
+        }
+        double** H = double_2d_array_allocate(m[i], 11);
+        for(int j=0; j<m[i]; j++)
+        {
+            for(int k=0; k<11; k++)
+            {
+                H[j][k] = new_X[j][k] * divide[k];
+            }
+        }
+    }
 
     return mu_and_sig;
 }
@@ -219,6 +247,32 @@ int dcomp (const void * elem1, const void * elem2)
     if (f > s) return  1;
     if (f < s) return -1;
     return 0;
+}
+
+int remove_duplicated(double* arr, int size)
+{
+    for(int i=0; i<size; i++)
+    {
+        for(int j=i+1; j<size; j++)
+        {
+            /* If any duplicate found */
+            if(arr[i] == arr[j])
+            {
+                /* Delete the current duplicate element */
+                for(int k=j; k < size - 1; k++)
+                {
+                    arr[k] = arr[k + 1];
+                }
+
+                /* Decrement size after removing duplicate element */
+                size--;
+
+                /* If shifting of elements occur then don't increment j */
+                j--;
+            }
+        }
+    }
+    return size;
 }
 
 
