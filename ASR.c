@@ -204,11 +204,11 @@ double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, dou
     {
         for(int j=0; j<11; j++)
         {
-            new_X[i][j] = new_X[i][j] - X1[j];
+           new_X[i][j] = new_X[i][j] - X1[j];
         }
     }
 
-    double m[44];
+    int m[44];
     double j=0.578;
     for(int i=0; i<44; i++, j-=step_sizes[1])
     {
@@ -216,23 +216,71 @@ double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, dou
     }
     int new_size = remove_duplicated(m, 44); // now m is a new_size big array with no duplicated element
 
-    qsort(m, (size_t)44, sizeof(double), dcomp);
+    qsort(m, (size_t)44, sizeof(int), icomp);
 
     for(int i=0; i<new_size; i++)
     {
-        nbins = round(3 * log2(1 + m[i]/2));
+        int nbins = round(3 * log2(1 + m[i]/2));
 
         double divide[11];
         for(int j=0; j<11; j++)
         {
-            divide[j] = nbins/new_X[m[i]][j];
+            divide[j] = nbins/new_X[m[i]-1][j];
         }
-        double** H = double_2d_array_allocate(m[i], 11);
-        for(int j=0; j<m[i]; j++)
+
+        //double** H = double_2d_array_allocate(m[i]-1, 11);
+        int the_m = m[i];
+        double** H = malloc(the_m * sizeof(double**));
+        for(int j=0; j<the_m; j++)
+            H[j] = (double*)malloc(11 * sizeof(double));
+
+        for(int j=0; j<the_m; j++)
         {
             for(int k=0; k<11; k++)
             {
-                H[j][k] = new_X[j][k] * divide[k];
+                if(new_X[j][k] != 0 && divide[k] != 0)
+                {
+                    H[j][k] = new_X[j][k] * divide[k];
+                }
+                else
+                {
+                    H[j][k] = 0;
+                }
+            }
+        }
+
+        int bounds[nbins + 1];
+        double counts[nbins + 1][11];
+        for(int j=0; j<nbins+1; j++)
+        {
+            for(int k=0; k<11; k++)
+            {
+                counts[j][k] = 0;
+            }
+            bounds[j] = j;
+        }
+        bounds[nbins] = MAX1;
+
+        for(int j=0; j<11; j++)
+        {
+            for(int k=0; k<the_m; k++)
+            {
+                for(int l=0; l<nbins; l++)
+                {
+                    if(H[k][j] >= bounds[l] && H[k][j] < bounds[l+1])
+                    {
+                        counts[l][j] += 1;
+                        break;
+                    }
+                }
+            }
+        }
+
+        for(int j=0; j<the_m; j++)
+        {
+            for(int k=0; k<11; k++)
+            {
+                counts[j][k] = log(counts[j][k] + 0.01);
             }
         }
     }
@@ -244,6 +292,15 @@ int dcomp (const void * elem1, const void * elem2)
 {
     double f = *((double*)elem1);
     double s = *((double*)elem2);
+    if (f > s) return  1;
+    if (f < s) return -1;
+    return 0;
+}
+
+int icomp (const void * elem1, const void * elem2)
+{
+    int f = *((int*)elem1);
+    int s = *((int*)elem2);
     if (f > s) return  1;
     if (f < s) return -1;
     return 0;

@@ -5,3 +5,5 @@
 #include <stddef.h>
 #include <float.h>
 #include <limits.h>
+
+#define MAX1 0x7fffffff
