@@ -131,7 +131,8 @@ double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, dou
 
     qsort(X, (size_t)n, sizeof(double), dcomp);
 
-    double gama_inverse[13][2] = {{-1.60862458455965,0.182115306908469},
+    // b_t is the zbounds
+    double b_t[13][2] = {{-1.60862458455965,0.182115306908469},
                                   {-1.50450959704516,0.180266821894673},
                                   {-1.42417727110355,0.179143454621292},
                                   {-1.36063558014906,0.178505967053939},
@@ -281,6 +282,44 @@ double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, dou
             for(int k=0; k<11; k++)
             {
                 counts[j][k] = log(counts[j][k] + 0.01);
+            }
+        }
+
+        int size = 1;
+        for(double j=0.5; j<MAX1; j++)
+        {
+            if((j+1) <= nbins-0.5)
+            {
+                size += 1;
+            }
+            else
+            {
+                break;
+            }
+        }
+        double tmp3[size];
+        for(int j=0; j<size; j++)
+        {
+            tmp3[j] = (0.5 + j) / nbins;
+        }
+
+        double x_m[13][size];
+
+        for(int j=0; j<13; j++)
+        {
+            double diff = b_t[j][1] - b_t[j][0];
+            for(int k=0; k<size; k++)
+            {
+                x_m[j][k] = b_t[j][0] + tmp3[k]*diff;
+            }
+        }
+
+        double p_m[13][size];
+        for(int j=0; j<13 ;j++)
+        {
+            for(int k=0; k<size; k++)
+            {
+                p_m[j][k] = exp(-pow(fabs(x_m[j][k]), beta[j]))*rescale[j];
             }
         }
     }
