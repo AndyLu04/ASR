@@ -236,7 +236,13 @@ double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, dou
 
         int the_m = m[i];
         double H[the_m][11];
-//        clear_array(H, the_m, 11);
+        for(int j=0; j<the_m; j++)
+        {
+            for(int k=0; k<11; k++)
+            {
+               H[j][k] = 0;
+            }
+        }
 
         for(int j=0; j<the_m; j++)
         {
