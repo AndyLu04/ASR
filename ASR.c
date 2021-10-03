@@ -126,7 +126,7 @@ void find_clean_ASR(ASR_PSW* the_ASR, double** data)
 
 double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, double max_dropout_fraction, double* quants, double* step_sizes, double* beta)
 {
-    double* mu_and_sig[2];
+    double mu_and_sig[2];
     int n = X_size;
 
     qsort(X, (size_t)n, sizeof(double), dcomp);
@@ -219,6 +219,11 @@ double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, dou
 
     qsort(m, (size_t)44, sizeof(int), icomp);
 
+    double opt_val = MAX1;
+    double opt_beta = 0;
+    double opt_bounds[2];
+    double opt_lu[2];
+
     for(int i=0; i<new_size; i++)
     {
         int nbins = round(3 * log2(1 + m[i]/2));
@@ -229,11 +234,9 @@ double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, dou
             divide[j] = nbins/new_X[m[i]-1][j];
         }
 
-        //double** H = double_2d_array_allocate(m[i]-1, 11);
         int the_m = m[i];
-        double** H = malloc(the_m * sizeof(double**));
-        for(int j=0; j<the_m; j++)
-            H[j] = (double*)malloc(11 * sizeof(double));
+        double H[the_m][11];
+//        clear_array(H, the_m, 11);
 
         for(int j=0; j<the_m; j++)
         {
@@ -348,7 +351,7 @@ double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, dou
             }
         }
 
-        double kl_m[13][11];
+        double kl_m[13][11] = {0};
         for(int j=0; j<13; j++)
         {
             for(int k=0; k<11; k++)
@@ -361,9 +364,54 @@ double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, dou
             }
         }
 
-        printf("asd");
+        int idx[13];
+        double min_val_t[13];
+        for(int j=0; j<13; j++)
+        {
+            min_val_t[j] = kl_m[j][0];
+            idx[j] = 0;
+            for(int k=1; k<11; k++)
+            {
+                if(dcomp(&min_val_t[j], &kl_m[j][k]) > 0)
+                {
+                    min_val_t[j] = kl_m[j][k];
+                    idx[j] = k;
+                }
+            }
+        }
+        int idx_b = 0;
+        double min_val = min_val_t[0];
+        for(int j=1; j<13; j++)
+        {
+            if(dcomp(&min_val, &min_val_t[j]) > 0)
+            {
+                min_val = min_val_t[j];
+                idx_b = j;
+            }
+        }
 
+        if(min_val > opt_val)
+        {
+            continue;
+        }
+
+        opt_val = min_val;
+
+        opt_beta = beta[idx_b];
+
+        opt_bounds[0] = b_t[idx_b][0];
+        opt_bounds[1] = b_t[idx_b][1];
+        opt_lu[0] = X1[idx[idx_b]];
+        opt_lu[1] = X1[idx[idx_b]] + new_X[m[i]][idx[idx_b]];
+
+        printf("asd");
     }
+
+    double alpha = (opt_lu[1] - opt_lu[0]) / (opt_bounds[1] - opt_bounds[0]);
+    mu_and_sig[0] = opt_lu[0] - opt_bounds[0]*alpha;
+    double beta_val = opt_beta;
+
+    mu_and_sig[1] = sqrt(pow(alpha,2) * tgamma(3/beta_val) / tgamma(1/beta_val));
 
     return mu_and_sig;
 }
@@ -411,5 +459,4 @@ int remove_duplicated(double* arr, int size)
     }
     return size;
 }
-
 
