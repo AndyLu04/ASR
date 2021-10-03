@@ -251,7 +251,7 @@ double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, dou
         }
 
         int bounds[nbins + 1];
-        double counts[nbins + 1][11];
+        double counts[nbins + 1][11]; // counts is logq
         for(int j=0; j<nbins+1; j++)
         {
             for(int k=0; k<11; k++)
@@ -322,6 +322,47 @@ double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, dou
                 p_m[j][k] = exp(-pow(fabs(x_m[j][k]), beta[j]))*rescale[j];
             }
         }
+
+        for(int j=0; j<13 ;j++)
+        {
+            double sum = 0;
+            for(int k=0; k<size; k++)
+            {
+                sum += p_m[j][k];
+            }
+            for(int k=0; k<size; k++)
+            {
+                p_m[j][k] = p_m[j][k]/sum;
+            }
+        }
+
+        double logq_m[13][size][11];
+        for(int j=0; j<13; j++)
+        {
+            for(int k=0; k<size; k++)
+            {
+                for(int l=0; l<11; l++)
+                {
+                    logq_m[j][k][l] = counts[k][l];
+                }
+            }
+        }
+
+        double kl_m[13][11];
+        for(int j=0; j<13; j++)
+        {
+            for(int k=0; k<11; k++)
+            {
+                for(int l=0; l<size; l++)
+                {
+                    kl_m[j][k] += p_m[j][l]*(log(p_m[j][l]) - logq_m[j][l][k]);
+                }
+                kl_m[j][k] += log(m[i]);
+            }
+        }
+
+        printf("asd");
+
     }
 
     return mu_and_sig;
