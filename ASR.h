@@ -7,7 +7,7 @@ typedef struct ASR_PSW
     double filter_A[9];
     double filter_B[9];
     double* M;
-    double channels;
+    int channels;
     double data_length;
 } ASR_PSW;
 

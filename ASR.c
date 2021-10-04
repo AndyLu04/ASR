@@ -77,7 +77,8 @@ void find_clean_ASR(ASR_PSW* the_ASR, double** data)
     double shape_range[13] = {1.7, 1.85, 2, 2.15, 2.30, 2.45, 2.6, 2.75, 2.9, 3.05, 3.2, 3.35, 3.5};
 
     double X[length];
-    //double** X = double_2d_array_allocate(the_ASR->channels, the_ASR->data_length);
+
+    double wz[the_ASR->channels][offset_size];
 
     for(int c=the_ASR->channels-1; c>=0; c--)
     {
@@ -87,7 +88,6 @@ void find_clean_ASR(ASR_PSW* the_ASR, double** data)
         }
 
         int bsxfun_plus[sampling_rate][offset_size];
-        //int** bsxfun_plus = int_2d_array_allocate(the_ASR->sampling_rate, offset_size);
         for(int i=0; i<N; i++)
         {
             for(int j=0; j<offset_size; j++)
@@ -97,7 +97,6 @@ void find_clean_ASR(ASR_PSW* the_ASR, double** data)
         }
 
         double tmp[sampling_rate][offset_size];
-        //int** tmp = int_2d_array_allocate(the_ASR->sampling_rate, offset_size);
         for(int i=0; i<N; i++)
         {
             for(int j=0; j<offset_size; j++)
@@ -117,16 +116,25 @@ void find_clean_ASR(ASR_PSW* the_ASR, double** data)
             sum[i] = sqrt(sum[i]/N);
         }
 
-        double* mu_and_sig;
-        mu_and_sig = test_eeg_dist_revi(sum, offset_size, min_clean_fraction, max_dropout_fraction, truncate_quant, clwin_step_sizes, shape_range);
+        double* mu_and_sig = test_eeg_dist_revi(sum, offset_size, min_clean_fraction, max_dropout_fraction, truncate_quant, clwin_step_sizes, shape_range);
+
+        for(int i=0; i<offset_size; i++)
+        {
+            wz[c][i] = (sum[i] - mu_and_sig[0]) / mu_and_sig[1];
+        }
 
     }
 
 }
 
-double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, double max_dropout_fraction, double* quants, double* step_sizes, double* beta)
+double* test_eeg_dist_revi(double* origin_X, int X_size, double min_clean_fraction, double max_dropout_fraction, double* quants, double* step_sizes, double* beta)
 {
-    double mu_and_sig[2];
+    double X[X_size];
+    for(int i=0; i<X_size; i++)
+    {
+        X[i] = origin_X[i];
+    }
+    static double mu_and_sig[2];
     int n = X_size;
 
     qsort(X, (size_t)n, sizeof(double), dcomp);
@@ -187,6 +195,13 @@ double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, dou
     }
 
     double new_X[tmp_size][11];
+    for(int i=0; i<tmp_size; i++)
+    {
+        for(int j=0; j<11; j++)
+        {
+            new_X[i][j] = 0;
+        }
+    }
     for(int i=0; i<tmp_size; i++)
     {
         for(int j=0; j<11; j++)
@@ -408,9 +423,9 @@ double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, dou
         opt_bounds[0] = b_t[idx_b][0];
         opt_bounds[1] = b_t[idx_b][1];
         opt_lu[0] = X1[idx[idx_b]];
-        opt_lu[1] = X1[idx[idx_b]] + new_X[m[i]][idx[idx_b]];
+        opt_lu[1] = X1[idx[idx_b]] + new_X[m[i]-1][idx[idx_b]];
 
-        printf("asd");
+//        printf("the_m: %d\nopt_val: %f\nopt_beta: %f\nopt_bounds: %f %f\nopt_lu: %f %f\n\n", the_m, opt_val, opt_beta, opt_bounds[0], opt_bounds[1], opt_lu[0], opt_lu[1]);
     }
 
     double alpha = (opt_lu[1] - opt_lu[0]) / (opt_bounds[1] - opt_bounds[0]);
@@ -419,7 +434,7 @@ double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, dou
 
     mu_and_sig[1] = sqrt(pow(alpha,2) * tgamma(3/beta_val) / tgamma(1/beta_val));
 
-    return mu_and_sig;
+    return &mu_and_sig;
 }
 
 int dcomp (const void * elem1, const void * elem2)
