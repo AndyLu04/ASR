@@ -108,6 +108,10 @@ void find_clean_ASR(ASR_PSW* the_ASR, double** data)
         double sum[offset_size];
         for(int i=0; i<offset_size; i++)
         {
+            sum[i] = 0;
+        }
+        for(int i=0; i<offset_size; i++)
+        {
             for(int j=0; j<N; j++)
             {
                 sum[i] += tmp[j][i];
@@ -124,6 +128,10 @@ void find_clean_ASR(ASR_PSW* the_ASR, double** data)
         }
 
     }
+
+    double max_bad_channels = round(row*0.2);
+    double zthresholds[2] = {-3.5, 5};
+
 
 }
 
