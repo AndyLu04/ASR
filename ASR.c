@@ -131,6 +131,24 @@ void find_clean_ASR(ASR_PSW* the_ASR, double** data)
 
     double max_bad_channels = round(row*0.2);
     double zthresholds[2] = {-3.5, 5};
+    double swz[the_ASR->channels][offset_size];
+    double tmp2[the_ASR->channels];
+
+    for(int i=0; i<offset_size; i++)
+    {
+        for(int j=0; j<the_ASR->channels; j++)
+        {
+            tmp2[j] = wz[j][i];
+        }
+
+        qsort(tmp2, (size_t)the_ASR->channels, sizeof(double), dcomp);
+        for(int j=0; j<the_ASR->channels; j++)
+        {
+            wz[j][i] = tmp2[j];
+            printf("%d : %f\n", j, wz[j][i]);
+        }
+        printf("\n");
+    }
 
 
 }
