@@ -8,10 +8,12 @@ typedef struct ASR_PSW
     double filter_B[9];
     double* M;
     int channels;
-    double data_length;
+    int data_length;
 } ASR_PSW;
 
 ASR_PSW create_ASR(int cutoff, int sampling_rate, int channels);
+
+double** find_clean_ASR(ASR_PSW* the_ASR, double** data);
 
 double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, double max_dropout_fraction, double* truncate_quant, double* clwin_step_sizes, double* shape_range);
 

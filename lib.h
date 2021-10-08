@@ -5,5 +5,5 @@
 #include <stddef.h>
 #include <float.h>
 #include <limits.h>
-
+#include <stdbool.h>
 #define MAX1 0x7fffffff

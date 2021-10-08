@@ -41,11 +41,10 @@ void update_ASR(ASR_PSW* the_ASR, double** data)
 
 void subspace_ASR(ASR_PSW* the_ASR, double** data)
 {
-    find_clean_ASR(the_ASR, data);
-
+    double** X = find_clean_ASR(the_ASR, data);
 }
 
-void find_clean_ASR(ASR_PSW* the_ASR, double** data)
+double** find_clean_ASR(ASR_PSW* the_ASR, double** data)
 {
     int clwin_window_len = 1;
     double window_overlap = 0.66;
@@ -129,7 +128,7 @@ void find_clean_ASR(ASR_PSW* the_ASR, double** data)
 
     }
 
-    double max_bad_channels = round(row*0.2);
+    int max_bad_channels = round(row*0.2);
     double zthresholds[2] = {-3.5, 5};
     double swz[the_ASR->channels][offset_size];
     double tmp2[the_ASR->channels];
@@ -144,13 +143,95 @@ void find_clean_ASR(ASR_PSW* the_ASR, double** data)
         qsort(tmp2, (size_t)the_ASR->channels, sizeof(double), dcomp);
         for(int j=0; j<the_ASR->channels; j++)
         {
-            wz[j][i] = tmp2[j];
-            printf("%d : %f\n", j, wz[j][i]);
+            swz[j][i] = tmp2[j];
+            //printf("%d : %f\n", j, wz[j][i]);
         }
-        printf("\n");
+        //printf("\n");
     }
 
+    bool remove_mask[offset_size];
+    for(int i=0; i<offset_size; i++)
+    {
+        remove_mask[i] = false;
+    }
 
+    for(int i=0; i<offset_size; i++)
+    {
+        if(swz[the_ASR->channels - max_bad_channels - 1][i] > zthresholds[1])
+        {
+            remove_mask[i] = true;
+        }
+        if(swz[1 + max_bad_channels - 1][i] < zthresholds[0])
+        {
+            remove_mask[i] = true;
+        }
+    }
+
+    int count =0;
+    for(int i=0; i<offset_size; i++)
+    {
+        if(remove_mask[i])
+        {
+            count += 1;
+        }
+    }
+    int removed_windows[count];
+    for(int i=0, j=0; i<offset_size; i++)
+    {
+        if(remove_mask[i])
+        {
+            removed_windows[j] = i;
+            j += 1;
+        }
+    }
+
+    int offset_val[count];
+    for(int i=0; i<count; i++)
+    {
+        offset_val[i] = offsets[removed_windows[i]];
+    }
+
+    bool sample_mask[the_ASR->data_length];
+    for(int i=0; i<the_ASR->data_length; i++)
+    {
+        sample_mask[i] = true;
+    }
+    for(int i=0; i<count; i++)
+    {
+        for(int j=0; j<N; j++)
+        {
+            sample_mask[offset_val[i] + wnd[j]-1] = false;
+        }
+    }
+
+    count =0;
+    for(int i=0; i<the_ASR->data_length; i++)
+    {
+        if(sample_mask[i])
+        {
+            count += 1;
+        }
+    }
+
+    static double** data_clean;
+    data_clean = (double *)malloc(the_ASR->channels * sizeof(double *));
+    for (int i=0; i<the_ASR->channels; i++)
+         data_clean[i] = (double *)malloc(count * sizeof(double));
+
+    for(int i=0; i<the_ASR->channels; i++)
+    {
+        int column = 0;
+        for(int j=0; j<the_ASR->data_length; j++)
+        {
+            if(sample_mask[j])
+            {
+                data_clean[i][column] = data[i][j];
+                column += 1;
+            }
+        }
+    }
+
+    return data_clean;
 }
 
 double* test_eeg_dist_revi(double* origin_X, int X_size, double min_clean_fraction, double max_dropout_fraction, double* quants, double* step_sizes, double* beta)
