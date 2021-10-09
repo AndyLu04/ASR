@@ -41,10 +41,14 @@ void update_ASR(ASR_PSW* the_ASR, double** data)
 
 void subspace_ASR(ASR_PSW* the_ASR, double** data)
 {
-    double** X = find_clean_ASR(the_ASR, data);
+    find_clean_ASR_return_val  return_val = find_clean_ASR(the_ASR, data);
+    double** X = return_val.X;
+    int C = return_val.column_size;
+
+    printf("asd");
 }
 
-double** find_clean_ASR(ASR_PSW* the_ASR, double** data)
+find_clean_ASR_return_val find_clean_ASR(ASR_PSW* the_ASR, double** data)
 {
     int clwin_window_len = 1;
     double window_overlap = 0.66;
@@ -231,7 +235,11 @@ double** find_clean_ASR(ASR_PSW* the_ASR, double** data)
         }
     }
 
-    return data_clean;
+    find_clean_ASR_return_val return_val;
+    return_val.X = data_clean;
+    return_val.column_size = count;
+
+    return return_val;
 }
 
 double* test_eeg_dist_revi(double* origin_X, int X_size, double min_clean_fraction, double max_dropout_fraction, double* quants, double* step_sizes, double* beta)
