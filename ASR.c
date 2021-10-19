@@ -43,9 +43,32 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
 {
     find_clean_ASR_return_val  return_val = find_clean_ASR(the_ASR, data);
     double** X = return_val.X;
-    int C = return_val.column_size;
+    int S = return_val.column_size;
 
-    printf("asd");
+    double window_len = 0.5;
+    double min_clean_fraction = 0.25;
+    double window_overlap = 0.66;
+    double max_dropout_fraction = 0.1;
+
+
+    double uc_data[the_ASR->channels][S];
+    double val[S];
+    double tmp[S];
+    for(int i=0; i<the_ASR->channels; i++)
+    {
+        for(int j=0; j<S; j++)
+        {
+            val[j] = X[i][j];
+        }
+        filter(8, the_ASR->filter_A, the_ASR->filter_B, S-1, val, tmp);
+        for(int k=0; k<S; k++)
+        {
+            uc_data[i][k] = tmp[k];
+        }
+    }
+
+    double** M = covInASR(the_ASR, uc_data, the_ASR->channels, S);
+
 }
 
 find_clean_ASR_return_val find_clean_ASR(ASR_PSW* the_ASR, double** data)
@@ -552,6 +575,30 @@ double* test_eeg_dist_revi(double* origin_X, int X_size, double min_clean_fracti
     return &mu_and_sig;
 }
 
+double** covInASR(ASR_PSW* the_ASR, double* data, int C, int S)
+{
+    int blocksize = 10;
+    int length = 1;
+    for(int i=1; i<S; i+=10)
+    {
+        if((i+10) <= S)
+        {
+           length += 1;
+        }
+    }
+    double U[length][C*C];
+    for(int i=0; i<length; i++)
+    {
+        for(int j=0; j<C*C; j++)
+        {
+            U[i][j] = 0;
+        }
+    }
+
+
+    printf("asd");
+}
+
 int dcomp (const void * elem1, const void * elem2)
 {
     double f = *((double*)elem1);
@@ -596,3 +643,26 @@ int remove_duplicated(double* arr, int size)
     return size;
 }
 
+void filter(int ord, double *a, double *b, int np, double *x, double *y)
+{
+    int i,j;
+    y[0]=b[0]*x[0];
+    for (i=1;i<ord+1;i++)
+    {
+        y[i]=0.0;
+        for (j=0;j<i+1;j++)
+            y[i]=y[i]+b[j]*x[i-j];
+        for (j=0;j<i;j++)
+            y[i]=y[i]-a[j+1]*y[i-j-1];
+    }
+    /* end of initial part */
+    for (i=ord+1;i<np+1;i++)
+    {
+        y[i]=0.0;
+        for (j=0;j<ord+1;j++)
+            y[i]=y[i]+b[j]*x[i-j];
+        for (j=0;j<ord;j++)
+            y[i]=y[i]-a[j+1]*y[i-j-1];
+    }
+    return;
+} /* end of filter */
