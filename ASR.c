@@ -51,7 +51,11 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
     double max_dropout_fraction = 0.1;
 
 
-    double uc_data[the_ASR->channels][S];
+    double* uc_data[the_ASR->channels];
+    for(int i=0; i<the_ASR->channels; i++)
+    {
+        uc_data[i] = (double*) malloc(S*sizeof(double));
+    }
     double val[S];
     double tmp[S];
     for(int i=0; i<the_ASR->channels; i++)
@@ -575,7 +579,7 @@ double* test_eeg_dist_revi(double* origin_X, int X_size, double min_clean_fracti
     return &mu_and_sig;
 }
 
-double** covInASR(ASR_PSW* the_ASR, double* data, int C, int S)
+double** covInASR(ASR_PSW* the_ASR, double** data, int C, int S)
 {
     int blocksize = 10;
     int length = 1;
@@ -601,13 +605,13 @@ double** covInASR(ASR_PSW* the_ASR, double* data, int C, int S)
     }
 
     length = 0;
+    int range[length];
     for(int k=0; k<blocksize; k++)
     {
         for(int i=1; i<=S+k-1; i+=blocksize)
         {
             length += 1;
         }
-        int range[length];
         for(int i=0; i<length; i++)
         {
             if(S > (1 + i*10))
@@ -619,8 +623,42 @@ double** covInASR(ASR_PSW* the_ASR, double* data, int C, int S)
                 range[i] = S;
             }
         }
+
+        double temp[length][the_ASR->channels];
+        for(int i=0; i<length; i++)
+        {
+            for(int j=0; j<the_ASR->channels; j++)
+            {
+                temp[i][j] = data[j][range[i]-1];
+            }
+        }
+
+        double*** temp2 = (double***)malloc(length * sizeof(double**));
+        for(int i=0; i<length; i++)
+        {
+            temp2[i] = (double**)malloc(the_ASR->channels * sizeof(double*));
+            for(int j=0; j<the_ASR->channels; j++)
+            {
+                temp2[i][j] = (double*)malloc(the_ASR->channels * sizeof(double));
+            }
+        }
+        // d1:row, d2:column, d3:hight
+        for(int d3=0; d3<the_ASR->channels; d3++)
+        {
+            for(int d1=0; d1<length; d1++)
+            {
+                for(int d2=0; d2<the_ASR->channels; d2++)
+                {
+                    temp2[d1][d2][d3] = temp[d1][d3] * temp[d1][d2];
+                }
+                printf("asd");
+            }
+            printf("asd");
+        }
         printf("asd");
     }
+
+
 
 
     printf("asd");

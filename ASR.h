@@ -23,7 +23,7 @@ find_clean_ASR_return_val find_clean_ASR(ASR_PSW* the_ASR, double** data);
 
 double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, double max_dropout_fraction, double* truncate_quant, double* clwin_step_sizes, double* shape_range);
 
-double** covInASR(ASR_PSW* the_ASR, double* data, int C, int S);
+double** covInASR(ASR_PSW* the_ASR, double** data, int C, int S);
 
 int dcomp (const void * elem1, const void * elem2);
 
