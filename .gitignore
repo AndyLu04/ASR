@@ -13,10 +13,22 @@ con_emg_cell\{2,1\}.csv
 
 core
 
-*.csv
-
 OSP.cbp
 
 OSP.depend
 
 OSP.layout
+
+fft_c2r_result.csv
+
+fft_input.csv
+
+fft_r2c_result.csv
+
+fft_result.csv
+
+pure_data_cell\{2,1\}.csv
+
+test_clean.csv
+
+test_unclean.csv
