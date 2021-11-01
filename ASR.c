@@ -51,11 +51,9 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
     double max_dropout_fraction = 0.1;
 
 
-    double* uc_data[the_ASR->channels];
-    for(int i=0; i<the_ASR->channels; i++)
-    {
-        uc_data[i] = (double*) malloc(S*sizeof(double));
-    }
+    double** uc_data = (double**)malloc(the_ASR->channels * sizeof(double*));
+    for(int i=0; i< the_ASR->channels; i++)
+        uc_data[i] = (double*)malloc(S * sizeof(double));
     double val[S];
     double tmp[S];
     for(int i=0; i<the_ASR->channels; i++)
@@ -71,7 +69,7 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
         }
     }
 
-    double** M = covInASR(the_ASR, uc_data, the_ASR->channels, S);
+    double** M = covInASR(the_ASR, the_ASR->channels, S, uc_data);
 
 }
 
@@ -175,9 +173,7 @@ find_clean_ASR_return_val find_clean_ASR(ASR_PSW* the_ASR, double** data)
         for(int j=0; j<the_ASR->channels; j++)
         {
             swz[j][i] = tmp2[j];
-            //printf("%d : %f\n", j, wz[j][i]);
         }
-        //printf("\n");
     }
 
     bool remove_mask[offset_size];
@@ -579,10 +575,11 @@ double* test_eeg_dist_revi(double* origin_X, int X_size, double min_clean_fracti
     return &mu_and_sig;
 }
 
-double** covInASR(ASR_PSW* the_ASR, double** data, int C, int S)
+double** covInASR(ASR_PSW* the_ASR, int C, int S, double** data)
 {
     int blocksize = 10;
     int length = 1;
+    double U[length][C*C];
     for(int i=1; i<S; i+=10)
     {
         if((i+10) <= S)
@@ -591,11 +588,10 @@ double** covInASR(ASR_PSW* the_ASR, double** data, int C, int S)
         }
     }
 
-    double* U[length];
-    for(int i=0; i<length; i++)
-    {
-        U[i] = (double*)malloc(C*C * sizeof(double));
-    }
+    double V[3000][C*C];
+//    double ** U = (double**)malloc(length * sizeof(double*));
+//    for(int i=0; i<length; i++)
+//        U[i] = (double*)malloc(C*C * sizeof(double));
     for(int i=0; i<length; i++)
     {
         for(int j=0; j<C*C; j++)
@@ -633,17 +629,8 @@ double** covInASR(ASR_PSW* the_ASR, double** data, int C, int S)
             }
         }
 
-        double*** temp2 = (double***)malloc(length * sizeof(double**));
-        for(int i=0; i<length; i++)
-        {
-            temp2[i] = (double**)malloc(the_ASR->channels * sizeof(double*));
-            for(int j=0; j<the_ASR->channels; j++)
-            {
-                temp2[i][j] = (double*)malloc(the_ASR->channels * sizeof(double));
-            }
-        }
-        // d1:row, d2:column, d3:hight
-        for(int d3=0; d3<the_ASR->channels; d3++)
+        double temp2[length][the_ASR->channels][the_ASR->channels];
+        for(int d3=0; d3<the_ASR->channels; d3++)   // d1:row, d2:column, d3:hight
         {
             for(int d1=0; d1<length; d1++)
             {
@@ -657,9 +644,6 @@ double** covInASR(ASR_PSW* the_ASR, double** data, int C, int S)
         }
         printf("asd");
     }
-
-
-
 
     printf("asd");
 }
