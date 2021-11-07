@@ -241,7 +241,7 @@ find_clean_ASR_return_val find_clean_ASR(ASR_PSW* the_ASR, double** data)
     }
 
     static double** data_clean;
-    data_clean = (double *)malloc(the_ASR->channels * sizeof(double *));
+    data_clean = (double **)malloc(the_ASR->channels * sizeof(double *));
     for (int i=0; i<the_ASR->channels; i++)
          data_clean[i] = (double *)malloc(count * sizeof(double));
 
@@ -272,7 +272,6 @@ double* test_eeg_dist_revi(double* origin_X, int X_size, double min_clean_fracti
     {
         X[i] = origin_X[i];
     }
-    static double mu_and_sig[2];
     int n = X_size;
 
     qsort(X, (size_t)n, sizeof(double), dcomp);
@@ -567,19 +566,20 @@ double* test_eeg_dist_revi(double* origin_X, int X_size, double min_clean_fracti
     }
 
     double alpha = (opt_lu[1] - opt_lu[0]) / (opt_bounds[1] - opt_bounds[0]);
+    static double* mu_and_sig;
+    mu_and_sig = (double*)malloc(2 * sizeof(double));
     mu_and_sig[0] = opt_lu[0] - opt_bounds[0]*alpha;
     double beta_val = opt_beta;
 
     mu_and_sig[1] = sqrt(pow(alpha,2) * tgamma(3/beta_val) / tgamma(1/beta_val));
 
-    return &mu_and_sig;
+    return mu_and_sig;
 }
 
 double** covInASR(ASR_PSW* the_ASR, int C, int S, double** data)
 {
     int blocksize = 10;
     int length = 1;
-    double U[length][C*C];
     for(int i=1; i<S; i+=10)
     {
         if((i+10) <= S)
@@ -588,10 +588,9 @@ double** covInASR(ASR_PSW* the_ASR, int C, int S, double** data)
         }
     }
 
-    double V[3000][C*C];
-//    double ** U = (double**)malloc(length * sizeof(double*));
-//    for(int i=0; i<length; i++)
-//        U[i] = (double*)malloc(C*C * sizeof(double));
+    double ** U = (double**)malloc(length * sizeof(double*));
+    for(int i=0; i<length; i++)
+        U[i] = (double*)malloc(C*C * sizeof(double));
     for(int i=0; i<length; i++)
     {
         for(int j=0; j<C*C; j++)
@@ -600,10 +599,10 @@ double** covInASR(ASR_PSW* the_ASR, int C, int S, double** data)
         }
     }
 
-    length = 0;
-    int range[length];
+    int* range = (int*)malloc(length * sizeof(int));
     for(int k=0; k<blocksize; k++)
     {
+        length = 0;
         for(int i=1; i<=S+k-1; i+=blocksize)
         {
             length += 1;
@@ -620,7 +619,9 @@ double** covInASR(ASR_PSW* the_ASR, int C, int S, double** data)
             }
         }
 
-        double temp[length][the_ASR->channels];
+        double** temp = (double**)malloc(length * sizeof(double*));
+        for(int i=0; i<length; i++)
+            temp[i] = (double*)malloc(the_ASR->channels * sizeof(double));
         for(int i=0; i<length; i++)
         {
             for(int j=0; j<the_ASR->channels; j++)
@@ -629,7 +630,15 @@ double** covInASR(ASR_PSW* the_ASR, int C, int S, double** data)
             }
         }
 
-        double temp2[length][the_ASR->channels][the_ASR->channels];
+        double*** temp2 = (double***)malloc(length * sizeof(double**));
+        for(int i=0; i<length; i++)
+        {
+            temp2[i] = (double**)malloc(the_ASR->channels * sizeof(double*));
+            for(int j=0; j<the_ASR->channels; j++)
+            {
+                temp2[i][j] = (double*)malloc(the_ASR->channels * sizeof(double));
+            }
+        }
         for(int d3=0; d3<the_ASR->channels; d3++)   // d1:row, d2:column, d3:hight
         {
             for(int d1=0; d1<length; d1++)
@@ -642,6 +651,7 @@ double** covInASR(ASR_PSW* the_ASR, int C, int S, double** data)
             }
             printf("asd");
         }
+
         printf("asd");
     }
 
@@ -666,30 +676,30 @@ int icomp (const void * elem1, const void * elem2)
     return 0;
 }
 
-int remove_duplicated(double* arr, int size)
+int remove_duplicated(int* arr, int the_size)
 {
-    for(int i=0; i<size; i++)
+    for(int i=0; i<the_size; i++)
     {
-        for(int j=i+1; j<size; j++)
+        for(int j=i+1; j<the_size; j++)
         {
             /* If any duplicate found */
             if(arr[i] == arr[j])
             {
                 /* Delete the current duplicate element */
-                for(int k=j; k < size - 1; k++)
+                for(int k=j; k < the_size - 1; k++)
                 {
                     arr[k] = arr[k + 1];
                 }
 
                 /* Decrement size after removing duplicate element */
-                size--;
+                the_size--;
 
                 /* If shifting of elements occur then don't increment j */
                 j--;
             }
         }
     }
-    return size;
+    return the_size;
 }
 
 void filter(int ord, double *a, double *b, int np, double *x, double *y)

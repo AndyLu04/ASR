@@ -8,7 +8,7 @@ double** read_data(char* file_name, int row_size, int column_size)
     fp = fopen(file_name, "r");
 
     static double** data;
-    data = (double *)malloc(row_size * sizeof(double *));
+    data = (double **)malloc(row_size * sizeof(double *));
     for (int i=0; i<row_size; i++)
          data[i] = (double *)malloc(column_size * sizeof(double));
 
@@ -42,7 +42,7 @@ void dft_r2c_1d(int N)
     int digs = DECIMAL_DIG;
     double *in;
     fftw_complex *out;
-    in = (fftw_complex*) fftw_malloc(sizeof(double) * N);
+    in = (double*) fftw_malloc(sizeof(double) * N);
     out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
 
     //double** fft_input = read_data("con_emg_cell{2,1}.csv", 19, 5601);
