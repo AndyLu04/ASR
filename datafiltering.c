@@ -2,7 +2,7 @@
 
 double** data_filtering(double** data, int row_size, int column_size, int sampling_rate)
 {
-    double** result = (double *)malloc(sizeof(double*)*row_size);
+    double** result = (double **)malloc(sizeof(double*)*row_size);
     double lowcut = 1;
     double highcut = 50;
     for(int i=0; i<row_size; i++)
