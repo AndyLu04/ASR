@@ -645,14 +645,30 @@ double** covInASR(ASR_PSW* the_ASR, int C, int S, double** data)
             {
                 for(int d2=0; d2<the_ASR->channels; d2++)
                 {
-                    temp2[d1][d2][d3] = temp[d1][d3] * temp[d1][d2];
+                    temp2[d1][d2][d3] = temp[d1][d3] * temp[d1][d2]; //bsxfun(@times,reshape(X(range,:),[],1,C),reshape(X(range,:),[],C,1))
                 }
-                printf("asd");
             }
-            printf("asd");
         }
 
-        printf("asd");
+        for(int i=0; i<length; i++)
+        {
+            for(int j=0; j<C*C; j++)
+            {
+                int column = j%19;
+                int hight = j/19;
+                U[i][j] = U[i][j] + temp2[i][column][hight];
+            }
+        }
+        for(int i=0; i<length; i++)
+        {
+            for(int j=0; j<the_ASR->channels; j++)
+            {
+                free(temp2[i][j]);
+            }
+            free(temp2[i]);
+        }
+        free(temp2);
+
     }
 
     printf("asd");
