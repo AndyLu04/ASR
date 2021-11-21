@@ -29,6 +29,10 @@ double* test_eeg_dist_revi(double* X, int X_size, double min_clean_fraction, dou
 
 double** covInASR(ASR_PSW* the_ASR, int C, int S, double** data);
 
+double* block_geometric_median(double** X, int row, int column);
+
+double* geometric_median(double** X, int row, int column);
+
 int dcomp (const void * elem1, const void * elem2);
 
 int icomp (const void * elem1, const void * elem2);

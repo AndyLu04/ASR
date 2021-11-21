@@ -609,9 +609,9 @@ double** covInASR(ASR_PSW* the_ASR, int C, int S, double** data)
         }
         for(int i=0; i<length; i++)
         {
-            if(S > (1 + i*10))
+            if(S > ((k + 1) + i*10))
             {
-                range[i] = 1 + i*10;
+                range[i] = (k + 1) + i*10;
             }
             else
             {
@@ -659,6 +659,7 @@ double** covInASR(ASR_PSW* the_ASR, int C, int S, double** data)
                 U[i][j] = U[i][j] + temp2[i][column][hight];
             }
         }
+
         for(int i=0; i<length; i++)
         {
             for(int j=0; j<the_ASR->channels; j++)
@@ -668,10 +669,111 @@ double** covInASR(ASR_PSW* the_ASR, int C, int S, double** data)
             free(temp2[i]);
         }
         free(temp2);
-
     }
 
+    for(int i=0; i<length; i++)
+    {
+        for(int j=0; j<C*C; j++)
+        {
+            U[i][j] = U[i][j] / blocksize;
+        }
+    }
+
+    double* y = block_geometric_median(U, length, C*C);
+
+
     printf("asd");
+}
+
+double* block_geometric_median(double** X, int row, int column)
+{
+    int blocksize = 1;
+
+    return geometric_median(X, row, column);
+}
+
+double* geometric_median(double** X, int row, int column)
+{
+    double tol = 0.00001;
+    double* y = (double*)malloc(column * sizeof(double)); // y is the median array
+    double* old_y = (double*)malloc(column * sizeof(double));
+    double* temp = (double*)malloc(row * sizeof(double));
+    for(int i=0; i<column; i++)
+    {
+        for(int j=0; j<row; j++)
+        {
+            temp[j] = X[j][i];
+        }
+        qsort(temp, (size_t)row, sizeof(double), dcomp);
+        if(row%2 != 0)
+        {
+            y[i] = temp[row/2];
+        }
+        else
+        {
+            y[i] = (temp[row/2] + temp[row/2 - 1])/2;
+        }
+    }
+    free(temp);
+
+    int max_iter = 500;
+    double invnorms[row];
+    double sum = 0;
+    double diff[column];
+    double norm_diff = 0;
+    double norm_y = 0;
+    for(int i=0; i<max_iter; i++)
+    {
+        for(int j=0; j<row; j++)
+        {
+            invnorms[j] = 0;
+            for(int k=0; k<column; k++)
+            {
+                invnorms[j] += pow((X[j][k] - y[k]), 2);
+            }
+            invnorms[j] = 1/sqrt(invnorms[j]);
+        }
+
+        sum = 0;
+        for(int j=0; j<row; j++)
+        {
+            sum += invnorms[j];
+        }
+
+        for(int j=0; j<column; j++)
+        {
+            old_y[j] = y[j];
+        }
+
+        for(int j=0; j<column; j++)
+        {
+            y[j] = 0;
+            for(int k=0; k<row; k++)
+            {
+                y[j] += invnorms[k] * X[k][j];
+            }
+            y[j] /= sum;
+        }
+
+        norm_diff = 0;
+        for(int j=0; j<column; j++)
+        {
+            norm_diff += pow(y[j] - old_y[j], 2);
+        }
+        norm_diff = sqrt(norm_diff);
+
+        norm_y = 0;
+        for(int j=0; j<column; j++)
+        {
+            norm_y += pow(y[j], 2);
+        }
+        norm_y = sqrt(norm_y);
+
+        if((norm_diff / norm_y) < tol)
+            break;
+    }
+
+    return y;
 }
 
 int dcomp (const void * elem1, const void * elem2)

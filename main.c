@@ -102,17 +102,17 @@ int main()
 {
     int sampling_rate = 200;
     int channels = 19;
-//    double** test_unclean = read_data("con_emg_cell{2,1}.csv", 19, 5601);
-//    double** test_clean = read_data("pure_data_cell{2,1}.csv", 19, 5601);
-//    //printf("%lf\n%lf\n", *test_unclean[0][0], *test_clean[0][0]);
-//
-//    test_clean = data_filtering(test_clean, 19, 5601, sampling_rate);
-//    write_to_file("test_clean.csv", test_clean, 19, 5601);
-//
-//    test_unclean = data_filtering(test_unclean, 19, 5601, sampling_rate);
-//    write_to_file("test_unclean.csv", test_unclean, 19, 5601);
+    double** test_unclean = read_data("con_emg_cell{2,1}.csv", 19, 5601);
+    double** test_clean = read_data("pure_data_cell{2,1}.csv", 19, 5601);
+    //printf("%lf\n%lf\n", *test_unclean[0][0], *test_clean[0][0]);
 
-//    double** clean_data = read_data("data_clean.csv", 19, 48000);
+    test_clean = data_filtering(test_clean, 19, 5601, sampling_rate);
+    write_to_file("test_clean.csv", test_clean, 19, 5601);
+
+    test_unclean = data_filtering(test_unclean, 19, 5601, sampling_rate);
+    write_to_file("test_unclean.csv", test_unclean, 19, 5601);
+
+    double** clean_data = read_data("data_clean.csv", 19, 48000);
     double** unclean_data = read_data("data_unclean.csv", 19, 48000);
 
 
