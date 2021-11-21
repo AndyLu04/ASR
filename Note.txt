@@ -1,0 +1,20 @@
+fftw library: https://www.fftw.org/fftw3_doc/One_002dDimensional-DFTs-of-Real-Data.html#One_002dDimensional-DFTs-of-Real-Data
+fftw install:
+	http://www.fftw.org/fftw2_doc/fftw_6.html
+	./configure
+	make
+	make install
+
+	library file location after builed: /usr/local/lib/libfftw3.a
+
+matlab filter guide:
+http://mirlab.org/jang/books/audiosignalprocessing/filterApplication_chinese.asp?title=11-1%20Filter%20Applications%20(%C2o%AAi%BE%B9%C0%B3%A5%CE)
+https://groups.google.com/g/comp.soft-sys.matlab/c/TpI55V__870/m/OecRMp3TCcIJ
+https://blog.csdn.net/grllery/article/details/81810101
+https://stackoverflow.com/questions/27275060/what-is-exactly-the-content-of-zf-in-matlab-function-filter
+
+github access token:
+	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
+
+codeblocks:
+	install keyboard shortcut: apt-get install codeblocks-contrib
