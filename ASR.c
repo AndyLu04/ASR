@@ -1,4 +1,5 @@
 #include "ASR.h"
+#include "sqrtm.h"
 
 ASR_PSW create_ASR(int cutoff, int sampling_rate, int channels)
 {
@@ -69,7 +70,11 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
         }
     }
 
-    double** M = covInASR(the_ASR, the_ASR->channels, S, uc_data);
+    the_ASR->M = covInASR(the_ASR, the_ASR->channels, S, uc_data);
+    int N = window_len * the_ASR->sampling_rate;
+    double* V = eigenvector(the_ASR->M, the_ASR->channels);
+
+    printf("asd");
 
 }
 
@@ -662,6 +667,12 @@ double** covInASR(ASR_PSW* the_ASR, int C, int S, double** data)
 
         for(int i=0; i<length; i++)
         {
+            free(temp[i]);
+        }
+        free(temp);
+
+        for(int i=0; i<length; i++)
+        {
             for(int j=0; j<the_ASR->channels; j++)
             {
                 free(temp2[i][j]);
@@ -670,6 +681,8 @@ double** covInASR(ASR_PSW* the_ASR, int C, int S, double** data)
         }
         free(temp2);
     }
+
+    free(range);
 
     for(int i=0; i<length; i++)
     {
@@ -681,8 +694,9 @@ double** covInASR(ASR_PSW* the_ASR, int C, int S, double** data)
 
     double* y = block_geometric_median(U, length, C*C);
 
+    sqrtm(y, C);
 
-    printf("asd");
+    return y;
 }
 
 double* block_geometric_median(double** X, int row, int column)
@@ -772,6 +786,8 @@ double* geometric_median(double** X, int row, int column)
         if((norm_diff / norm_y) < tol)
             break;
     }
+
+    free(old_y);
 
     return y;
 }

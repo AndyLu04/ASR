@@ -7,6 +7,23 @@ fftw install:
 
 	library file location after builed: /usr/local/lib/libfftw3.a
 
+use lapack:
+	https://www.seehuhn.de/pages/matrixfn.html
+	guide: https://www.youtube.com/watch?v=YFcETdYO8aw
+	1. Open browser and download file :http://www.netlib.org/lapack/#_lapack...
+	2. Move it into home folder
+	3. Extract it !
+	4. Open folder in ~/lapack-3.9.0/
+	5. Type this command :
+		cp make.inc.example make.inc
+	6. Type this command :
+		make blaslib
+	7. Type this command :
+		make lapacklib
+	8. It is Done. Now make it link:
+		sudo ln -s $HOME/lapack-3.9.0/librefblas.a /usr/local/lib/libblas.a
+		sudo ln -s $HOME/lapack-3.9.0/liblapack.a /usr/local/lib/liblapack.a
+
 matlab filter guide:
 http://mirlab.org/jang/books/audiosignalprocessing/filterApplication_chinese.asp?title=11-1%20Filter%20Applications%20(%C2o%AAi%BE%B9%C0%B3%A5%CE)
 https://groups.google.com/g/comp.soft-sys.matlab/c/TpI55V__870/m/OecRMp3TCcIJ

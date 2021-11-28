@@ -6,4 +6,6 @@
 #include <float.h>
 #include <limits.h>
 #include <stdbool.h>
+#include <cblas.h>
+
 #define MAX1 0x7fffffff
