@@ -31,7 +31,7 @@ https://blog.csdn.net/grllery/article/details/81810101
 https://stackoverflow.com/questions/27275060/what-is-exactly-the-content-of-zf-in-matlab-function-filter
 
 github access token:
-	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
+	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
 
 codeblocks:
 	install keyboard shortcut: apt-get install codeblocks-contrib
