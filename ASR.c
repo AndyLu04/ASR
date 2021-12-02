@@ -8,6 +8,8 @@ ASR_PSW create_ASR(int cutoff, int sampling_rate, int channels)
     the_ASR.cutoff = cutoff;
     the_ASR.channels = channels;
     the_ASR.M = NULL;
+    the_ASR.T = NULL;
+    the_ASR.fsm = NULL;
 
     if((sampling_rate/2 - 1) > 80)
     {
@@ -53,8 +55,11 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
 
 
     double** uc_data = (double**)malloc(the_ASR->channels * sizeof(double*));
-    for(int i=0; i< the_ASR->channels; i++)
+    for(int i=0; i<the_ASR->channels; i++)
         uc_data[i] = (double*)malloc(S * sizeof(double));
+    double** X_transpose = (double**)malloc(S * sizeof(double*));
+    for(int i=0; i<S; i++)
+        X_transpose[i] = (double*)malloc(the_ASR->channels * sizeof(double));
     double val[S];
     double tmp[S];
     for(int i=0; i<the_ASR->channels; i++)
@@ -67,13 +72,107 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
         for(int k=0; k<S; k++)
         {
             uc_data[i][k] = tmp[k];
+            X_transpose[k][i] = uc_data[i][k];
         }
     }
 
     the_ASR->M = covInASR(the_ASR, the_ASR->channels, S, uc_data);
     int N = window_len * the_ASR->sampling_rate;
-    double* V = eigenvector(the_ASR->M, the_ASR->channels);
+    double** V = eigenvector(the_ASR->M, the_ASR->channels);
 
+    double** new_X = (double**)malloc(S * sizeof(double*));
+    for(int i=0; i<S; i++)
+        new_X[i] = (double*)malloc(the_ASR->channels * sizeof(double));
+
+    for(int i=0; i<S; i++)
+    {
+        for(int j=0; j<the_ASR->channels; j++)
+        {
+            new_X[i][j] = 0;
+            for(int k=0; k<the_ASR->channels; k++)
+            {
+                new_X[i][j] += X_transpose[i][k] * V[k][j];
+            }
+            new_X[i][j] = fabs(new_X[i][j]);
+        }
+    }
+
+    for(int i=0; i<S; i++)
+    {
+        free(X_transpose[i]);
+    }
+    free(X_transpose);
+
+    double mu[the_ASR->channels];
+    double sig[the_ASR->channels];
+
+    for(int c=the_ASR->channels-1; c>=0; c--)
+    {
+        double* rms = (double*)malloc(S * sizeof(double));
+        for(int i=0; i<S; i++)
+        {
+            rms[i] = new_X[i][c] * new_X[i][c];
+        }
+
+        int size = floor((S-N-1)/(N*(1-window_overlap)) + 1);
+        int diff = N*(1-window_overlap);
+        int tmp1[size];
+        for(int i=0; i<size; i++)
+        {
+            tmp1[i] = 1 + diff*i;
+        }
+
+        double tmp2[size];
+        for(int i=0; i<size; i++)
+        {
+            double sum = 0;
+            for(int j=0; j<N; j++)
+            {
+                sum += rms[j + tmp1[i]-1];
+            }
+            tmp2[i] = sqrt(sum/N);
+        }
+
+        double* mu_and_sig = test_eeg_dist_revi(tmp2, size, min_clean_fraction, max_dropout_fraction, NULL, NULL, NULL);
+        mu[c] = mu_and_sig[0];
+        sig[c] = mu_and_sig[1];
+
+        free(rms);
+    }
+
+    for(int i=0; i<the_ASR->channels; i++)
+    {
+        mu[i] = mu[i] + the_ASR->cutoff*sig[i];
+    }
+
+    the_ASR->T = (double*)malloc(the_ASR->channels*the_ASR->channels * sizeof(double));
+
+    for(int i=0; i<the_ASR->channels; i++)
+    {
+        for(int j=0; j<the_ASR->channels; j++)
+        {
+            the_ASR->T[i*the_ASR->channels+j] = mu[i]*V[j][i];
+        }
+    }
+
+    if(the_ASR->fsm == NULL)
+    {
+        double** Y_0 = (double**)malloc(the_ASR->channels * sizeof(double*));
+        for(int i=0; i<the_ASR->channels; i++)
+            Y_0[i] = (double*)malloc(S * sizeof(double));
+        for(int i=0; i<the_ASR->channels; i++)
+        {
+            for(int j=0; j<S; j++)
+            {
+                for(int k=0; k<the_ASR->channels; k++)
+                {
+                    Y_0[i][j] += V[k][i] * uc_data[k][j];
+                }
+                printf("asd");
+            }
+        }
+        printf("asd");
+    }
     printf("asd");
 
 }
@@ -272,6 +371,31 @@ find_clean_ASR_return_val find_clean_ASR(ASR_PSW* the_ASR, double** data)
 
 double* test_eeg_dist_revi(double* origin_X, int X_size, double min_clean_fraction, double max_dropout_fraction, double* quants, double* step_sizes, double* beta)
 {
+    if(min_clean_fraction == -777)
+        min_clean_fraction = 0.25;
+    if(max_dropout_fraction == -777)
+        max_dropout_fraction = 0.1;
+    if(quants == NULL)
+    {
+        quants = (double*)malloc(2 * sizeof(double));
+        quants[0] = 0.022;
+        quants[1] = 0.6;
+    }
+    if(step_sizes == NULL)
+    {
+        step_sizes = (double*)malloc(2 * sizeof(double));
+        step_sizes[0] = 0.01;
+        step_sizes[1] = 0.01;
+    }
+    if(beta == NULL)
+    {
+        beta = (double*)malloc(13 * sizeof(double));
+        for(int i=0; i<13; i++)
+        {
+            beta[i] = 1.7 + 0.15*i;
+        }
+    }
+
     double X[X_size];
     for(int i=0; i<X_size; i++)
     {
@@ -859,3 +983,4 @@ void filter(int ord, double *a, double *b, int np, double *x, double *y)
     }
     return;
 } /* end of filter */
+

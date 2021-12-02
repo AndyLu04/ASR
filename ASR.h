@@ -1,5 +1,18 @@
 #include "lib.h"
 
+typedef struct state
+{
+    double* M;
+    double* T;
+    double A[9];
+    double B[9];
+    double* cov;
+    double* carry;
+    double* iir;
+    double* last_R;
+    bool last_trivial;
+} state;
+
 typedef struct ASR_PSW
 {
     double sampling_rate;
@@ -7,8 +20,11 @@ typedef struct ASR_PSW
     double filter_A[9];
     double filter_B[9];
     double* M;
+    double* T;
+    double* fsm;
     int channels;
     int data_length;
+    state the_state;
 } ASR_PSW;
 
 typedef struct find_clean_ASR_return_val
@@ -40,3 +56,4 @@ int icomp (const void * elem1, const void * elem2);
 int remove_duplicated(int* arr, int the_size);
 
 void filter(int ord, double *a, double *b, int np, double *x, double *y);
+
