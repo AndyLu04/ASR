@@ -78,7 +78,7 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
 
     the_ASR->M = covInASR(the_ASR, the_ASR->channels, S, uc_data);
     int N = window_len * the_ASR->sampling_rate;
-    double** V = eigenvector(the_ASR->M, the_ASR->channels);
+    double* V = eigenvector(the_ASR->M, the_ASR->channels); // V's row & column are inversed, -> V is V' in matlab
 
     double** new_X = (double**)malloc(S * sizeof(double*));
     for(int i=0; i<S; i++)
@@ -91,7 +91,7 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
             new_X[i][j] = 0;
             for(int k=0; k<the_ASR->channels; k++)
             {
-                new_X[i][j] += X_transpose[i][k] * V[k][j];
+                new_X[i][j] += X_transpose[i][k] * V[j*the_ASR->channels+k];
             }
             new_X[i][j] = fabs(new_X[i][j]);
         }
@@ -140,39 +140,39 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
         free(rms);
     }
 
+    the_ASR->T = (double*)malloc(the_ASR->channels*the_ASR->channels * sizeof(double));
+
     for(int i=0; i<the_ASR->channels; i++)
     {
         mu[i] = mu[i] + the_ASR->cutoff*sig[i];
     }
 
-    the_ASR->T = (double*)malloc(the_ASR->channels*the_ASR->channels * sizeof(double));
-
     for(int i=0; i<the_ASR->channels; i++)
     {
         for(int j=0; j<the_ASR->channels; j++)
         {
-            the_ASR->T[i*the_ASR->channels+j] = mu[i]*V[j][i];
+            the_ASR->T[i*the_ASR->channels+j] = mu[i]*V[i*the_ASR->channels + j];
         }
     }
 
-    if(the_ASR->fsm == NULL)
-    {
-        double** Y_0 = (double**)malloc(the_ASR->channels * sizeof(double*));
-        for(int i=0; i<the_ASR->channels; i++)
-            Y_0[i] = (double*)malloc(S * sizeof(double));
-        for(int i=0; i<the_ASR->channels; i++)
-        {
-            for(int j=0; j<S; j++)
-            {
-                for(int k=0; k<the_ASR->channels; k++)
-                {
-                    Y_0[i][j] += V[k][i] * uc_data[k][j];
-                }
-                printf("asd");
-            }
-        }
-        printf("asd");
-    }
+//    if(the_ASR->fsm == NULL)
+//    {
+//        double** Y_0 = (double**)malloc(the_ASR->channels * sizeof(double*));
+//        for(int i=0; i<the_ASR->channels; i++)
+//            Y_0[i] = (double*)malloc(S * sizeof(double));
+//        for(int i=0; i<the_ASR->channels; i++)
+//        {
+//            for(int j=0; j<S; j++)
+//            {
+//                for(int k=0; k<the_ASR->channels; k++)
+//                {
+//                    Y_0[i][j] += V[k][i] * uc_data[k][j];
+//                }
+//                printf("asd");
+//            }
+//        }
+//        printf("asd");
+//    }
     printf("asd");
 
 }

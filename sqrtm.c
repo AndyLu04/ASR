@@ -113,7 +113,6 @@ double* eigenvector(double* A, int N)
             W, Z, N, ISUPPZ, WORK, 26*N, IWORK, 10*N);
 
     free(W);
-    free(Z);
     free(ISUPPZ);
     free(WORK);
     free(IWORK);
