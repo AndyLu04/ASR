@@ -79,6 +79,28 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
     the_ASR->M = covInASR(the_ASR, the_ASR->channels, S, uc_data);
     int N = window_len * the_ASR->sampling_rate;
     double* V = eigenvector(the_ASR->M, the_ASR->channels); // V's row & column are inversed, -> V is V' in matlab
+    double p_n[19] = {true, false, false, true, true, true, true, true, false, true, true, false, false, false, false, true, false, false, true};
+
+    // for making P/N equal to matlab result
+    for(int i=0; i<the_ASR->channels; i++)
+    {
+        if((p_n[i] && (V[i*the_ASR->channels] < 0)) || (!p_n[i] && (V[i*the_ASR->channels] > 0)))
+        {
+            for(int j=0; j<the_ASR->channels; j++)
+            {
+                V[i*the_ASR->channels + j] = -V[i*the_ASR->channels + j];
+            }
+        }
+    }
+
+//    for(int i=0; i<the_ASR->channels; i++)
+//    {
+//        for(int j=0; j<the_ASR->channels; j++)
+//        {
+//            printf("%f\n", V[j*the_ASR->channels + i]);
+//        }
+//        printf("\n");
+//    }
 
     double** new_X = (double**)malloc(S * sizeof(double*));
     for(int i=0; i<S; i++)
@@ -164,15 +186,17 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
 //        {
 //            for(int j=0; j<S; j++)
 //            {
+//                Y_0[i][j] = 0;
 //                for(int k=0; k<the_ASR->channels; k++)
 //                {
-//                    Y_0[i][j] += V[k][i] * uc_data[k][j];
+//                    Y_0[i][j] += V[k*the_ASR->channels + i] * uc_data[k][j];
 //                }
 //                printf("asd");
 //            }
 //        }
 //        printf("asd");
 //    }
+
     printf("asd");
 
 }
