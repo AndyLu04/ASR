@@ -57,3 +57,5 @@ int remove_duplicated(int* arr, int the_size);
 
 void filter(int ord, double *a, double *b, int np, double *x, double *y);
 
+double* reconstruct(ASR_PSW* the_ASR, double** data);
+

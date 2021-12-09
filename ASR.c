@@ -42,6 +42,35 @@ void update_ASR(ASR_PSW* the_ASR, double** data)
 
 }
 
+double* reconstruct(ASR_PSW* the_ASR, double** data)
+{
+    int availableRAM_GB = 8;
+    double asr_windowlen = 0.5;
+    int end_size = the_ASR->data_length - round(asr_windowlen * the_ASR->sampling_rate / 2);
+
+    double last_times_two[the_ASR->channels];
+    for(int i=0; i<the_ASR->channels; i++)
+    {
+        last_times_two[i] = data[the_ASR->channels-1][i];
+    }
+
+    double* sig = (double*)malloc(the_ASR->channels * (the_ASR->data_length + end_size) * sizeof(double));
+    for(int i=0; i<the_ASR->channels; i++)
+    {
+        for(int j=0; j<the_ASR->data_length; j++)
+        {
+            sig[i*the_ASR->channels + j] = data[i][j];
+        }
+    }
+    for(int i=0; i<the_ASR->channels; i++)
+    {
+        for(int j=the_ASR->data_length; j<the_ASR->data_length+50; j++)
+        {
+            sig[i*the_ASR->channels + j] = last_times_two[i] - sig[i*the_ASR->channels + j - end_size];
+        }
+    }
+}
+
 void subspace_ASR(ASR_PSW* the_ASR, double** data)
 {
     find_clean_ASR_return_val  return_val = find_clean_ASR(the_ASR, data);
@@ -196,8 +225,6 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
 //        }
 //        printf("asd");
 //    }
-
-    printf("asd");
 
 }
 
