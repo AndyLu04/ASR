@@ -122,7 +122,7 @@ int main()
 
     update_ASR(&my_ASR, unclean_data);
 
-
+    double* data_processed = reconstruct(&my_ASR, unclean_data);
 
 
     //dft_r2c_1d(256);

@@ -46,12 +46,14 @@ double* reconstruct(ASR_PSW* the_ASR, double** data)
 {
     int availableRAM_GB = 8;
     double asr_windowlen = 0.5;
-    int end_size = the_ASR->data_length - round(asr_windowlen * the_ASR->sampling_rate / 2);
+    int substract_val = round(asr_windowlen * the_ASR->sampling_rate / 2);
+    int end_size = the_ASR->data_length - substract_val;
+    int new_size = the_ASR->data_length + substract_val;
 
     double last_times_two[the_ASR->channels];
     for(int i=0; i<the_ASR->channels; i++)
     {
-        last_times_two[i] = data[the_ASR->channels-1][i];
+        last_times_two[i] = 2 * data[i][the_ASR->data_length-1];
     }
 
     double* sig = (double*)malloc(the_ASR->channels * (the_ASR->data_length + end_size) * sizeof(double));
@@ -59,16 +61,14 @@ double* reconstruct(ASR_PSW* the_ASR, double** data)
     {
         for(int j=0; j<the_ASR->data_length; j++)
         {
-            sig[i*the_ASR->channels + j] = data[i][j];
+            sig[i*new_size + j] = data[i][j];
         }
-    }
-    for(int i=0; i<the_ASR->channels; i++)
-    {
-        for(int j=the_ASR->data_length; j<the_ASR->data_length+50; j++)
+        for(int j=the_ASR->data_length, k=1; j<the_ASR->data_length+substract_val; j++, k++)
         {
-            sig[i*the_ASR->channels + j] = last_times_two[i] - sig[i*the_ASR->channels + j - end_size];
+            sig[i*new_size + j] = last_times_two[i] - sig[i*new_size - 1 + the_ASR->data_length - k ];
         }
     }
+    printf("asd");
 }
 
 void subspace_ASR(ASR_PSW* the_ASR, double** data)
