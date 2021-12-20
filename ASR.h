@@ -8,7 +8,7 @@ typedef struct state
     double B[9];
     double* cov;
     double* carry;
-    double* iir;
+    double** iir;
     double* last_R;
     bool last_trivial;
 } state;
@@ -49,13 +49,15 @@ double* block_geometric_median(double** X, int row, int column);
 
 double* geometric_median(double** X, int row, int column);
 
+double* test_asr_process(double* data, int size, double srate, ASR_PSW* the_ASR, double windowlen, double lookahead, double maxdims, int maxmem);
+
 int dcomp (const void * elem1, const void * elem2);
 
 int icomp (const void * elem1, const void * elem2);
 
 int remove_duplicated(int* arr, int the_size);
 
-void filter(int ord, double *a, double *b, int np, double *x, double *y);
+void filter(int ord, double *a, double *b, int np, double *x, double *y, double* initial_state, double *iirstate);
 
 double* reconstruct(ASR_PSW* the_ASR, double** data);
 

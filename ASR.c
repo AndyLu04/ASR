@@ -10,6 +10,11 @@ ASR_PSW create_ASR(int cutoff, int sampling_rate, int channels)
     the_ASR.M = NULL;
     the_ASR.T = NULL;
     the_ASR.fsm = NULL;
+    the_ASR.the_state.iir = (double**)malloc(channels * sizeof(double*));
+    for(int i=0; i<channels; i++)
+    {
+        the_ASR.the_state.iir[i] = (double*)malloc(8 * sizeof(double));
+    }
 
     if((sampling_rate/2 - 1) > 80)
     {
@@ -68,7 +73,11 @@ double* reconstruct(ASR_PSW* the_ASR, double** data)
             sig[i*new_size + j] = last_times_two[i] - sig[i*new_size - 1 + the_ASR->data_length - k ];
         }
     }
+    double maxdims = 0.66;
+
+    double* data_ASR = test_asr_process(sig, new_size, the_ASR->sampling_rate, the_ASR, asr_windowlen, asr_windowlen/2, maxdims, availableRAM_GB);
     printf("asd");
+
 }
 
 void subspace_ASR(ASR_PSW* the_ASR, double** data)
@@ -97,7 +106,7 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
         {
             val[j] = X[i][j];
         }
-        filter(8, the_ASR->filter_A, the_ASR->filter_B, S-1, val, tmp);
+        filter(8, the_ASR->filter_A, the_ASR->filter_B, S-1, val, tmp, NULL, the_ASR->the_state.iir[i]);
         for(int k=0; k<S; k++)
         {
             uc_data[i][k] = tmp[k];
@@ -967,6 +976,73 @@ double* geometric_median(double** X, int row, int column)
     return y;
 }
 
+double* test_asr_process(double* data, int size, double srate, ASR_PSW* the_ASR, double windowlen, double lookahead, double maxdims, int maxmem)
+{
+    maxmem = maxmem * pow(2, 30) / pow(2, 21);
+    if(windowlen < 1.5*the_ASR->channels/the_ASR->sampling_rate)
+    {
+        windowlen = 1.5*the_ASR->channels/the_ASR->sampling_rate;
+    }
+    int stepsize = 32;
+    bool usegpu = false;
+    if(maxdims < 1)
+    {
+        maxdims = round(the_ASR->channels*maxdims);
+    }
+
+    int C = the_ASR->channels;
+    int S = size;
+    int N = round(windowlen*srate);
+    int P = round(lookahead*srate);
+    the_ASR->the_state.carry = (double*)malloc(the_ASR->channels * P * sizeof(double));
+    for(int i=0; i<the_ASR->channels; i++)
+    {
+        for(int j=0; j<P; j++)
+        {
+            the_ASR->the_state.carry[i*P + j] = 2*data[i*S] - data[i*S + P - j];
+        }
+    }
+
+    int new_column = S + P;
+    double* new_data = (double*)malloc(the_ASR->channels*new_column * sizeof(double));
+    for(int i=0; i<the_ASR->channels; i++)
+    {
+        for(int j=0; j<P; j++)
+        {
+            new_data[i*new_column+j] = the_ASR->the_state.carry[i*P + j];
+        }
+        for(int k=0; k<S; k++)
+        {
+            new_data[i*new_column+P+k] = data[i*size+k];
+        }
+    }
+
+    double a = C*C*S*8*8 + C*C*8*S/stepsize + C*S*8*2 + S*8*5;
+    double b = (double)(maxmem*1024 - (double)C*C*P*8*3/1024);
+    double splits = a/b;
+    splits = ceil(splits/1024);
+
+    for(int i=0; i<splits; i++)
+    {
+        int end = 0;
+        if(S <= floor(i*S/splits))
+        {
+            end = S;
+        }
+        else
+        {
+            end = floor(i*S/splits);
+        }
+        int start = 1+floor((i-1)*S/splits);
+
+        double* filter_X = (double*)malloc(size * sizeof(double));
+        filter(8, the_ASR->filter_A, the_ASR->filter_B, S-1, data, filter_X, NULL, the_ASR->the_state.iir);
+        printf("123");
+    }
+
+    printf("123");
+}
+
 int dcomp (const void * elem1, const void * elem2)
 {
     double f = *((double*)elem1);
@@ -1011,27 +1087,55 @@ int remove_duplicated(int* arr, int the_size)
     return the_size;
 }
 
-void filter(int ord, double *a, double *b, int np, double *x, double *y)
+void filter(int ord, double *a, double *b, int np, double *x, double *y, double* initial_state, double *iirstate)
 {
-    int i,j;
-    y[0]=b[0]*x[0];
-    for (i=1;i<ord+1;i++)
+    if(initial_state == NULL)
+    {
+        y[0]=b[0]*x[0];
+        for (int i=1;i<ord+1;i++)
+        {
+            y[i]=0.0;
+            for (int j=0;j<i+1;j++)
+                y[i]=y[i]+b[j]*x[i-j];
+            for (int j=0;j<i;j++)
+                y[i]=y[i]-a[j+1]*y[i-j-1];
+        }
+        /* end of initial part */
+    }
+    else
+    {
+        for(int i=0; i<ord; i++)
+        {
+            for(int j=0; j<i+1; j++)
+            {
+                y[i] += b[j]*x[j];
+            }
+            y[i] += initial_state[i];
+        }
+    }
+
+    for (int i=ord+1;i<np+1;i++)
     {
         y[i]=0.0;
-        for (j=0;j<i+1;j++)
+        for (int j=0;j<ord+1;j++)
             y[i]=y[i]+b[j]*x[i-j];
-        for (j=0;j<i;j++)
+        for (int j=0;j<ord;j++)
             y[i]=y[i]-a[j+1]*y[i-j-1];
     }
-    /* end of initial part */
-    for (i=ord+1;i<np+1;i++)
+
+    for(int i=0; i<ord; i++)
     {
-        y[i]=0.0;
-        for (j=0;j<ord+1;j++)
-            y[i]=y[i]+b[j]*x[i-j];
-        for (j=0;j<ord;j++)
-            y[i]=y[i]-a[j+1]*y[i-j-1];
+        iirstate[i] = 0;
+        for(int j=i, k=0; k<ord-i; j++, k++)
+        {
+            iirstate[i] += b[j+1]*x[np-k];
+        }
+        for(int j=i, k=0; k<ord-i; j++, k++)
+        {
+            iirstate[i] = iirstate[i] - a[j+1]*y[np-k];
+        }
     }
+
     return;
 } /* end of filter */
 
