@@ -10,6 +10,7 @@ ASR_PSW create_ASR(int cutoff, int sampling_rate, int channels)
     the_ASR.M = NULL;
     the_ASR.T = NULL;
     the_ASR.fsm = NULL;
+    the_ASR.the_state.cov = NULL;
     the_ASR.the_state.iir = (double**)malloc(channels * sizeof(double*));
     for(int i=0; i<channels; i++)
     {
@@ -130,15 +131,6 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
             }
         }
     }
-
-//    for(int i=0; i<the_ASR->channels; i++)
-//    {
-//        for(int j=0; j<the_ASR->channels; j++)
-//        {
-//            printf("%f\n", V[j*the_ASR->channels + i]);
-//        }
-//        printf("\n");
-//    }
 
     double** new_X = (double**)malloc(S * sizeof(double*));
     for(int i=0; i<S; i++)
@@ -1035,11 +1027,79 @@ double* test_asr_process(double* data, int size, double srate, ASR_PSW* the_ASR,
         }
         int start = 1+floor((i-1)*S/splits);
 
-        double* filter_X = (double*)malloc(size * sizeof(double));
-        filter(8, the_ASR->filter_A, the_ASR->filter_B, S-1, data, filter_X, NULL, the_ASR->the_state.iir);
+        double** filter_X = (double**)malloc(C * sizeof(double));
+        for(int i=0; i<C; i++)
+        {
+            filter_X[i] = (double*)malloc(S * sizeof(double));
+        }
+        for(int i=0; i<the_ASR->channels; i++)
+        {
+            double* val = (double*)malloc(S * sizeof(double));
+            for(int j=0; j<S; j++)
+            {
+                val[j] = new_data[i*new_column+j+P];
+            }
+            filter(8, the_ASR->filter_A, the_ASR->filter_B, S-1, val, filter_X[i], the_ASR->the_state.iir[i], the_ASR->the_state.iir[i]);
+            free(val);
+        }
+        double** input_x = (double**)malloc(C*C * sizeof(double*));
+        for(int i=0; i<C*C; i++)
+        {
+            input_x[i] = (double*)malloc(S * sizeof(double));
+        }
+
+        for(int i=0; i<C; i++)
+        {
+            for(int j=0; j<C; j++)
+            {
+                for(int k=0; k<S; k++)
+                {
+                    input_x[i*C + j][k] = filter_X[j][k] * filter_X[i][k];
+                }
+            }
+        }
+        double*** return_val = moving_average(N, input_x, C*C, S, the_ASR->the_state.cov);
         printf("123");
     }
 
+    printf("123");
+}
+
+double*** moving_average(int N, double** X, int x_row, int x_column, double* Zi)
+{
+    int zero_size = 0;
+    if(Zi == NULL)
+    {
+        zero_size = N;
+    }
+    double* Y = (double*)malloc(x_row*(zero_size+x_column) * sizeof(double));
+    for(int i=0; i<x_row; i++)
+    {
+        for(int j=0; j<zero_size; j++)
+        {
+            Y[i*(zero_size+x_column)+j] = 0;
+        }
+        for(int j=0; j<x_column; j++)
+        {
+            Y[i*(zero_size+x_column)+j+zero_size] = X[i][j];
+        }
+    }
+    int M = zero_size+x_column;
+    int row = x_row;
+    double* new_X = (double*)malloc(row*2*x_column * sizeof(double));
+    double previous = 0;
+    for(int i1=0, i2=1, i3=0; i1<x_column*2-1; i1+=2, i2+=2, i3+=1)
+    {
+        for(int j=0; j<row; j++)
+        {
+            previous = (i1 == 0)? 0 : new_X[j*2*x_column + i1 - 1];
+            new_X[j*2*x_column + i1] = Y[j*(zero_size+x_column) + i3]/(-N) + previous;
+        }
+        for(int j=0; j<row; j++)
+        {
+            new_X[j*2*x_column + i2] = Y[j*(zero_size+x_column) + i3+zero_size]/N + new_X[j*2*x_column + i2 - 1];
+        }
+    }
     printf("123");
 }
 
@@ -1089,10 +1149,12 @@ int remove_duplicated(int* arr, int the_size)
 
 void filter(int ord, double *a, double *b, int np, double *x, double *y, double* initial_state, double *iirstate)
 {
+    int ini_len = 0;
     if(initial_state == NULL)
     {
+        ini_len = ord+1;
         y[0]=b[0]*x[0];
-        for (int i=1;i<ord+1;i++)
+        for (int i=1;i<ini_len;i++)
         {
             y[i]=0.0;
             for (int j=0;j<i+1;j++)
@@ -1104,17 +1166,23 @@ void filter(int ord, double *a, double *b, int np, double *x, double *y, double*
     }
     else
     {
-        for(int i=0; i<ord; i++)
+        ini_len = ord;
+        for(int i=0; i<ini_len; i++)
         {
-            for(int j=0; j<i+1; j++)
+            y[i] = 0;
+            for(int j=0, k=i; j<i+1; j++, k--)
             {
-                y[i] += b[j]*x[j];
+                y[i] += b[j]*x[k];
+            }
+            for (int j=0;j<i;j++)
+            {
+                y[i] -= a[j+1]*y[i-j-1];
             }
             y[i] += initial_state[i];
         }
     }
 
-    for (int i=ord+1;i<np+1;i++)
+    for (int i=ini_len;i<np+1;i++)
     {
         y[i]=0.0;
         for (int j=0;j<ord+1;j++)
@@ -1138,4 +1206,3 @@ void filter(int ord, double *a, double *b, int np, double *x, double *y, double*
 
     return;
 } /* end of filter */
-
