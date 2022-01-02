@@ -61,5 +61,5 @@ void filter(int ord, double *a, double *b, int np, double *x, double *y, double*
 
 double* reconstruct(ASR_PSW* the_ASR, double** data);
 
-double*** moving_average(int N, double** X, int x_row, int x_column, double* Zi);
+double** moving_average(int N, double** X, int x_row, int x_column, double* Zi);
 

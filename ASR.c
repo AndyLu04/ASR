@@ -1014,18 +1014,18 @@ double* test_asr_process(double* data, int size, double srate, ASR_PSW* the_ASR,
     double splits = a/b;
     splits = ceil(splits/1024);
 
-    for(int i=0; i<splits; i++)
+    for(int i1=0; i1<splits; i1++)
     {
         int end = 0;
-        if(S <= floor(i*S/splits))
+        if(S <= floor(i1*S/splits))
         {
             end = S;
         }
         else
         {
-            end = floor(i*S/splits);
+            end = floor(i1*S/splits);
         }
-        int start = 1+floor((i-1)*S/splits);
+        int start = 1+floor((i1-1)*S/splits);
 
         double** filter_X = (double**)malloc(C * sizeof(double));
         for(int i=0; i<C; i++)
@@ -1058,14 +1058,48 @@ double* test_asr_process(double* data, int size, double srate, ASR_PSW* the_ASR,
                 }
             }
         }
-        double*** return_val = moving_average(N, input_x, C*C, S, the_ASR->the_state.cov);
+        double** return_val = moving_average(N, input_x, C*C, S, the_ASR->the_state.cov);
+        double* Xcov = return_val[0];
+        the_ASR->the_state.cov = return_val[1];
+
+        int size = floor((S+stepsize-1)/32);
+        int update_at_temp[size];
+        for(int i=0, j=32; i<size; i++, j+=32)
+        {
+            update_at_temp[i] = j>S? S : j;
+        }
+
+        if(the_ASR->the_state.last_R == NULL)
+        {
+            int* update_at = (int)malloc((size+1) * sizeof(int));
+            int one[1] = {1};
+            memcpy(update_at, one, sizeof(int));
+            memcpy(update_at+1, update_at_temp, size*sizeof(int));
+            the_ASR->the_state.last_R = (double*)malloc(C*C * sizeof(double));
+            for(int i=0; i<C; i++)
+            {
+                for(int j=0; j<C; j++)
+                {
+                    the_ASR->the_state.last_R[i*C + j] = i==j? 1 : 0;
+                }
+            }
+        }
+        else
+        {
+            int* update_at = (int*)malloc(size * sizeof(int));
+            memcpy(update_at, update_at_temp, size*sizeof(int));
+        }
+
+        int last_n= 0;
+
+
         printf("123");
     }
 
     printf("123");
 }
 
-double*** moving_average(int N, double** X, int x_row, int x_column, double* Zi)
+double** moving_average(int N, double** X, int x_row, int x_column, double* Zi)
 {
     int zero_size = 0;
     if(Zi == NULL)
@@ -1086,21 +1120,46 @@ double*** moving_average(int N, double** X, int x_row, int x_column, double* Zi)
     }
     int M = zero_size+x_column;
     int row = x_row;
-    double* new_X = (double*)malloc(row*2*x_column * sizeof(double));
-    double previous = 0;
-    for(int i1=0, i2=1, i3=0; i1<x_column*2-1; i1+=2, i2+=2, i3+=1)
+    double* new_X = (double*)malloc(row*x_column * sizeof(double));
+    double* temp = (double*)malloc(row * sizeof(double));
+    for(int i=0; i<row; i++)
+    {
+        temp[i] = 0;
+    }
+    for(int i1=0, i2=0; i1<x_column; i1+=1, i2+=1)
     {
         for(int j=0; j<row; j++)
         {
-            previous = (i1 == 0)? 0 : new_X[j*2*x_column + i1 - 1];
-            new_X[j*2*x_column + i1] = Y[j*(zero_size+x_column) + i3]/(-N) + previous;
+            temp[j] = Y[j*(zero_size+x_column) + i2]/(-N) + temp[j];
         }
         for(int j=0; j<row; j++)
         {
-            new_X[j*2*x_column + i2] = Y[j*(zero_size+x_column) + i3+zero_size]/N + new_X[j*2*x_column + i2 - 1];
+            new_X[j*x_column + i1] = Y[j*(zero_size+x_column) + i2+zero_size]/N + temp[j];
+            temp[j] = new_X[j*x_column + i1];
         }
     }
-    printf("123");
+
+    double* Zf = (double*)malloc(row*N * sizeof(double));
+    for(int i=0; i<N; i++)
+    {
+        Zf[i*N] = -(new_X[i*x_column+x_column-1]*N - Y[i*(zero_size+x_column) + zero_size+x_column-N]);
+    }
+    for(int i=0; i<row; i++)
+    {
+        for(int j=1; j<N; j++)
+        {
+            Zf[i*N + j] = Y[i*(zero_size+x_column) + zero_size+x_column-N+j];
+        }
+    }
+
+    free(Y);
+    free(temp);
+
+    double** return_val = (double**)malloc(2 * sizeof(double*));
+    return_val[0] = new_X;
+    return_val[1] = Zf;
+
+    return return_val;
 }
 
 int dcomp (const void * elem1, const void * elem2)

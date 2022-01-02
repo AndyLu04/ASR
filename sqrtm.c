@@ -103,8 +103,8 @@ double* eigenvector(double* A, int N)
     int *ISUPPZ, *IWORK;
     int  M;
 
-    W = malloc(N*sizeof(double));
-    Z = malloc(N*N*sizeof(double));
+    W = malloc(N*sizeof(double));  //eigenvalues
+    Z = malloc(N*N*sizeof(double));  //eigenvectors
     ISUPPZ = malloc(2*N*sizeof(int));
     WORK = malloc(26*N*sizeof(double));
     IWORK = malloc(10*N*sizeof(int));
