@@ -1,5 +1,11 @@
 #include "lib.h"
 
+typedef struct eigen
+{
+    double* eigen_vector;
+    double* eigen_value;
+} eigen;
+
 int dsyevr(char JOBZ, char RANGE, char UPLO, int N,
        double *A, int LDA, double VL, double VU,
        int IL, int IU, double ABSTOL, int *M,
@@ -14,4 +20,4 @@ static double dlamch(char CMACH);
 
 void sqrtm(double* A, int N);
 
-double* eigenvector(double* A, int N);
+eigen* eigenvector(double* A, int N);

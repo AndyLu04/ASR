@@ -97,7 +97,7 @@ void sqrtm(double* A, int N)
     free(B);
 }
 
-double* eigenvector(double* A, int N)
+eigen* eigenvector(double* A, int N)
 {
     double *W, *Z, *WORK;
     int *ISUPPZ, *IWORK;
@@ -112,11 +112,15 @@ double* eigenvector(double* A, int N)
     dsyevr('V', 'A', 'L', N, A, N, 0, 0, 0, 0, dlamch('S'), &M,
             W, Z, N, ISUPPZ, WORK, 26*N, IWORK, 10*N);
 
-    free(W);
+//    free(W);
     free(ISUPPZ);
     free(WORK);
     free(IWORK);
 
-    return Z;
+    eigen* the_eigen = (eigen*)malloc(1 * sizeof(eigen));
+    the_eigen->eigen_value = W;
+    the_eigen->eigen_vector = Z;
+
+    return the_eigen;
 }
 

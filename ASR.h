@@ -2,8 +2,6 @@
 
 typedef struct state
 {
-    double* M;
-    double* T;
     double A[9];
     double B[9];
     double* cov;
@@ -63,3 +61,6 @@ double* reconstruct(ASR_PSW* the_ASR, double** data);
 
 double** moving_average(int N, double** X, int x_row, int x_column, double* Zi);
 
+void write_data_to_file(char file_name[], double* data, int row_size, int column_size);
+
+double* inverse(double* A, int N);

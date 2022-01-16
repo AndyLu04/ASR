@@ -11,7 +11,9 @@ ASR_PSW create_ASR(int cutoff, int sampling_rate, int channels)
     the_ASR.T = NULL;
     the_ASR.fsm = NULL;
     the_ASR.the_state.cov = NULL;
+    the_ASR.the_state.last_R = NULL;
     the_ASR.the_state.iir = (double**)malloc(channels * sizeof(double*));
+    the_ASR.the_state.last_trivial = true;
     for(int i=0; i<channels; i++)
     {
         the_ASR.the_state.iir[i] = (double*)malloc(8 * sizeof(double));
@@ -116,8 +118,14 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
     }
 
     the_ASR->M = covInASR(the_ASR, the_ASR->channels, S, uc_data);
+
+    double* temp = (double*)malloc(the_ASR->channels*the_ASR->channels * sizeof(double)); // use temp because after calculate eigenvector, the array value will change
+    memcpy(temp, the_ASR->M, the_ASR->channels*the_ASR->channels*sizeof(double));
     int N = window_len * the_ASR->sampling_rate;
-    double* V = eigenvector(the_ASR->M, the_ASR->channels); // V's row & column are inversed, -> V is V' in matlab
+    eigen* the_eigen = eigenvector(temp, the_ASR->channels);
+    free(temp);
+    double* V = the_eigen->eigen_vector; // V's row & column are inversed, -> V is V' in matlab
+
     double p_n[19] = {true, false, false, true, true, true, true, true, false, true, true, false, false, false, false, true, false, false, true};
 
     // for making P/N equal to matlab result
@@ -1066,13 +1074,16 @@ double* test_asr_process(double* data, int size, double srate, ASR_PSW* the_ASR,
         int update_at_temp[size];
         for(int i=0, j=32; i<size; i++, j+=32)
         {
-            update_at_temp[i] = j>S? S : j;
+            update_at_temp[i] = j>S? S : j-1;
         }
 
+        int len_update_at = 0;
+        int* update_at = NULL;
         if(the_ASR->the_state.last_R == NULL)
         {
-            int* update_at = (int)malloc((size+1) * sizeof(int));
-            int one[1] = {1};
+            update_at = (int*)malloc((size+1) * sizeof(int));
+            len_update_at = size+1;
+            int one[1] = {0};
             memcpy(update_at, one, sizeof(int));
             memcpy(update_at+1, update_at_temp, size*sizeof(int));
             the_ASR->the_state.last_R = (double*)malloc(C*C * sizeof(double));
@@ -1086,13 +1097,121 @@ double* test_asr_process(double* data, int size, double srate, ASR_PSW* the_ASR,
         }
         else
         {
-            int* update_at = (int*)malloc(size * sizeof(int));
+            update_at = (int*)malloc(size * sizeof(int));
+            len_update_at = size;
             memcpy(update_at, update_at_temp, size*sizeof(int));
         }
 
         int last_n= 0;
+        double** new_Xcov = (double**)malloc(len_update_at * sizeof(double*));
+        for(int j=0; j<len_update_at; j++)
+        {
+            new_Xcov[j] = (double*)malloc(C*C * sizeof(double));
+        }
+        for(int j=0, column=0; j<len_update_at; j++)
+        {
+            column = update_at[j];
+            for(int k=0; k<361; k++)
+            {
+                new_Xcov[j][k] = Xcov[k*S + column];
+            }
+        }
 
+        double* R = (double*)malloc(C*C * sizeof(double));
+        for(int j=0; j<len_update_at; j++)
+        {
+            eigen* the_eigen = eigenvector(new_Xcov[j], C);
+            double* V = the_eigen->eigen_vector;
+            double* D = the_eigen->eigen_value;
+            qsort(D, (size_t)C, sizeof(double), dcomp);
+            double* temp = (double*)malloc(C*C * sizeof(double));
 
+            for(int k=0; k<C; k++)
+            {
+                for(int l=0; l<C; l++)
+                {
+                    temp[k*C + l] = 0;
+                    for(int m=0; m<C; m++)
+                    {
+                        temp[k*C + l] += the_ASR->T[k*C + m]*V[l*C + m];
+                    }
+                    temp[k*C + l] = temp[k*C + l]*temp[k*C + l];
+                }
+            }
+            bool trivial = true;
+            bool keep[19] = {true};
+            for(int k=0; k<C; k++)
+            {
+                for(int l=1; l<C; l++)
+                {
+                    temp[k] += temp[l*C + k];
+                }
+                if(!((D[k] < temp[k]) || ((k+1)<C-maxdims)))
+                {
+                    trivial = false;
+                    keep[k] = 0;
+                }
+                else
+                {
+                    keep[k] = 1;
+                }
+            }
+            free(temp);
+
+            if(!trivial)
+            {
+                double* temp = (double*)malloc(C*C * sizeof(double));
+                for(int k=0; k<C; k++)
+                {
+                    for(int l=0; l<C; l++)
+                    {
+                        temp[k*C + l] = 0;
+                        for(int m=0; m<C; m++)
+                        {
+                            temp[k*C + l] += V[k*C + m]*the_ASR->M[m*C + l];
+                        }
+                    }
+                }
+                for(int k=0; k<C; k++)
+                {
+                    for(int l=0; l<C; l++)
+                    {
+                        temp[k*C + l] = temp[k*C + l]*keep[k];
+                    }
+                }
+                write_data_to_file("temp_data.csv", temp, C, C);
+                inverse(temp, C);
+            }
+            else
+            {
+                for(int k=0; k<C; k++)
+                {
+                    for(int l=0; l<C; l++)
+                    {
+                        if(k == l)
+                        {
+                            R[k*C + l] = 1;
+                        }
+                        else
+                        {
+                            R[k*C + l] = 1;
+                        }
+                    }
+                }
+            }
+
+            int n = update_at[j];
+            if(!trivial || !the_ASR->the_state.last_trivial)
+            {
+                n = n;
+            }
+            last_n = n;
+            the_ASR->the_state.last_R = R;
+            the_ASR->the_state.last_trivial = trivial;
+
+            free(V);
+            free(D);
+        }
         printf("123");
     }
 
@@ -1265,3 +1384,65 @@ void filter(int ord, double *a, double *b, int np, double *x, double *y, double*
 
     return;
 } /* end of filter */
+
+void write_data_to_file(char file_name[], double* data, int row_size, int column_size)
+{
+    FILE *fpt = fopen( file_name,"w" );
+    for(int i=0; i< row_size; i++)
+    {
+        for(int j=0; j< column_size; j++)
+        {
+            fprintf(fpt,"%f,", data[i*column_size + j]);
+        }
+        fprintf(fpt,"\n");
+    }
+    fclose(fpt);
+}
+
+double* inverse(double* A, int N)
+{
+    int sockfd = 0;
+    sockfd = socket(AF_INET , SOCK_STREAM , 0);
+
+    if (sockfd == -1){
+        printf("Fail to create a socket.");
+    }
+
+    //socket的連線
+    struct sockaddr_in info;
+    bzero(&info,sizeof(info));
+    info.sin_family = PF_INET;
+
+    //localhost test
+    info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    info.sin_port = htons(8000);
+
+
+    int err = connect(sockfd,(struct sockaddr *)&info,sizeof(info));
+    if(err==-1){
+        printf("Connection error");
+    }
+
+
+    //Send a message to server
+    int size = 2;
+    double dmsg[] = {5.123123123123123, 123.123};
+    char receiveMessage[100] = {};
+
+    send(sockfd,&size,sizeof(int),0);
+    recv(sockfd,receiveMessage,sizeof(receiveMessage),0);
+    printf("%s\n",receiveMessage);
+
+    send(sockfd,dmsg,2*sizeof(double),0);
+    recv(sockfd,receiveMessage,sizeof(receiveMessage),0);
+    printf("%s\n",receiveMessage);
+
+    char server_reply[100] = {};
+    recv(sockfd,server_reply,sizeof(server_reply),0);
+    printf("%s\n", server_reply);
+    double matrix[size];
+    memcpy(matrix, server_reply, size * sizeof(double));
+
+    printf("close Socket\n");
+    close(sockfd);
+}
