@@ -1074,7 +1074,7 @@ double* test_asr_process(double* data, int size, double srate, ASR_PSW* the_ASR,
         int update_at_temp[size];
         for(int i=0, j=32; i<size; i++, j+=32)
         {
-            update_at_temp[i] = j>S? S : j-1;
+            update_at_temp[i] = j>S? S-1 : j-1;
         }
 
         int len_update_at = 0;
@@ -1117,9 +1117,9 @@ double* test_asr_process(double* data, int size, double srate, ASR_PSW* the_ASR,
             }
         }
 
-        double* R = (double*)malloc(C*C * sizeof(double));
         for(int j=0; j<len_update_at; j++)
         {
+            double* R = (double*)malloc(C*C * sizeof(double));
             eigen* the_eigen = eigenvector(new_Xcov[j], C);
             double* V = the_eigen->eigen_vector;
             double* D = the_eigen->eigen_value;
@@ -1179,8 +1179,32 @@ double* test_asr_process(double* data, int size, double srate, ASR_PSW* the_ASR,
                         temp[k*C + l] = temp[k*C + l]*keep[k];
                     }
                 }
-                write_data_to_file("temp_data.csv", temp, C, C);
-                inverse(temp, C);
+
+                double* pinv = inverse(temp, C);
+
+                for(int k=0; k<C; k++)
+                {
+                    for(int l=0; l<C; l++)
+                    {
+                        temp[k*C + l] = 0;
+                        for(int m=0; m<C; m++)
+                        {
+                            temp[k*C + l] += the_ASR->M[k*C + m]*pinv[m*C + l];
+                        }
+                    }
+                }
+                for(int k=0; k<C; k++)
+                {
+                    for(int l=0; l<C; l++)
+                    {
+                        R[k*C + l] = 0;
+                        for(int m=0; m<C; m++)
+                        {
+                            R[k*C + l] += temp[k*C + m]*V[m*C + l];
+                        }
+                    }
+                }
+                free(temp);
             }
             else
             {
@@ -1194,7 +1218,7 @@ double* test_asr_process(double* data, int size, double srate, ASR_PSW* the_ASR,
                         }
                         else
                         {
-                            R[k*C + l] = 1;
+                            R[k*C + l] = 0;
                         }
                     }
                 }
@@ -1203,19 +1227,62 @@ double* test_asr_process(double* data, int size, double srate, ASR_PSW* the_ASR,
             int n = update_at[j];
             if(!trivial || !the_ASR->the_state.last_trivial)
             {
-                n = n;
+                int subrange_start = last_n+1;
+                int subrange_end = n;
+                int blend_size = n-last_n;
+                double* blend = (double*)malloc(blend_size * sizeof(double));
+                double pi = acos(-1);
+                for(int k=0; k< blend_size; k++)
+                {
+                    blend[k] = (1 - cos(pi * (k+1)/blend_size)) / 2;
+                }
+
+                double temp;
+                double temp2;
+                double answer[C][blend_size];
+                for(int k=0; k<C; k++)
+                {
+                    for(int l=subrange_start; l<=subrange_end; l++)
+                    {
+                        temp = 0;
+                        temp2 = 0;
+                        for(int m=0; m<C; m++)
+                        {
+                            temp += R[k*C + m] * new_data[m*new_column + l];
+                            temp2 += the_ASR->the_state.last_R[k*C + m] * new_data[m*new_column + l];
+                        }
+
+                        answer[k][l-subrange_start] = temp*blend[l - subrange_start] + temp2*(1-blend[l - subrange_start]);
+                    }
+                    printf("123");
+                }
+                for(int k=0; k<C; k++)
+                {
+                    for(int l=subrange_start; l<=subrange_end; l++)
+                    {
+                        new_data[k*new_column + l] = answer[k][l-subrange_start];
+                    }
+                }
+                free(blend);
             }
             last_n = n;
-            the_ASR->the_state.last_R = R;
+            if(the_ASR->the_state.last_R == NULL)
+            {
+                the_ASR->the_state.last_R = (double*)malloc(C*C*sizeof(double));
+            }
+            else
+            {
+                free(the_ASR->the_state.last_R);
+                the_ASR->the_state.last_R = (double*)malloc(C*C*sizeof(double));
+            }
+            memcpy(the_ASR->the_state.last_R,R, C*C*sizeof(double));
+            free(R);
             the_ASR->the_state.last_trivial = trivial;
 
             free(V);
             free(D);
         }
-        printf("123");
     }
-
-    printf("123");
 }
 
 double** moving_average(int N, double** X, int x_row, int x_column, double* Zi)
@@ -1399,7 +1466,7 @@ void write_data_to_file(char file_name[], double* data, int row_size, int column
     fclose(fpt);
 }
 
-double* inverse(double* A, int N)
+double* inverse(double* data, int N)
 {
     int sockfd = 0;
     sockfd = socket(AF_INET , SOCK_STREAM , 0);
@@ -1408,41 +1475,34 @@ double* inverse(double* A, int N)
         printf("Fail to create a socket.");
     }
 
-    //socket的連線
+    //socket connection
     struct sockaddr_in info;
     bzero(&info,sizeof(info));
     info.sin_family = PF_INET;
 
-    //localhost test
+    //localhost
     info.sin_addr.s_addr = inet_addr("127.0.0.1");
     info.sin_port = htons(8000);
-
 
     int err = connect(sockfd,(struct sockaddr *)&info,sizeof(info));
     if(err==-1){
         printf("Connection error");
     }
 
-
     //Send a message to server
-    int size = 2;
-    double dmsg[] = {5.123123123123123, 123.123};
-    char receiveMessage[100] = {};
+    int size = N*N;
 
-    send(sockfd,&size,sizeof(int),0);
-    recv(sockfd,receiveMessage,sizeof(receiveMessage),0);
-    printf("%s\n",receiveMessage);
+    send(sockfd,&N,sizeof(int),0);
 
-    send(sockfd,dmsg,2*sizeof(double),0);
-    recv(sockfd,receiveMessage,sizeof(receiveMessage),0);
-    printf("%s\n",receiveMessage);
+    send(sockfd,data,size*sizeof(double),0);
 
-    char server_reply[100] = {};
+    char server_reply[5000] = {};
     recv(sockfd,server_reply,sizeof(server_reply),0);
-    printf("%s\n", server_reply);
-    double matrix[size];
-    memcpy(matrix, server_reply, size * sizeof(double));
+    double* pinv = (double*)malloc(size * sizeof(double));
+    memcpy(pinv, server_reply, size * sizeof(double));
 
     printf("close Socket\n");
     close(sockfd);
+
+    return pinv;
 }
