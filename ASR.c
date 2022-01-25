@@ -78,9 +78,27 @@ double* reconstruct(ASR_PSW* the_ASR, double** data)
     }
     double maxdims = 0.66;
 
-    double* data_ASR = test_asr_process(sig, new_size, the_ASR->sampling_rate, the_ASR, asr_windowlen, asr_windowlen/2, maxdims, availableRAM_GB);
-    printf("asd");
+    double* return_data = test_asr_process(sig, new_size, the_ASR->sampling_rate, the_ASR, asr_windowlen, asr_windowlen/2, maxdims, availableRAM_GB);
 
+    int carry_size = (asr_windowlen/2)*the_ASR->sampling_rate;
+    int new_column = new_size-carry_size;
+    double* data_ASR = malloc(the_ASR->channels*new_column * sizeof(double));
+    int index_dst = 0;
+    int index_src = 50;
+    for(int i=0; i<the_ASR->channels; i++)
+    {
+        memcpy(data_ASR+index_dst, return_data+index_src, new_column * sizeof(double));
+        index_dst += new_column;
+        index_src += new_size;
+    }
+
+    for(int i=0; i<the_ASR->channels; i++)
+        free(data[i]);
+    free(data);
+
+    free(return_data);
+
+    return data_ASR;
 }
 
 void subspace_ASR(ASR_PSW* the_ASR, double** data)
@@ -116,8 +134,15 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
             X_transpose[k][i] = uc_data[i][k];
         }
     }
+    for(int i=0; i<the_ASR->channels; i++)
+        free(X[i]);
+    free(X);
 
     the_ASR->M = covInASR(the_ASR, the_ASR->channels, S, uc_data);
+    for(int i=0; i<the_ASR->channels; i++)
+        free(uc_data[i]);
+    free(uc_data);
+
 
     double* temp = (double*)malloc(the_ASR->channels*the_ASR->channels * sizeof(double)); // use temp because after calculate eigenvector, the array value will change
     memcpy(temp, the_ASR->M, the_ASR->channels*the_ASR->channels*sizeof(double));
@@ -234,6 +259,10 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
 //        }
 //        printf("asd");
 //    }
+
+    for(int i=0; i<S; i++)
+        free(new_X[i]);
+    free(new_X);
 
 }
 
@@ -880,6 +909,8 @@ double** covInASR(ASR_PSW* the_ASR, int C, int S, double** data)
 
     sqrtm(y, C);
 
+    free(U);
+
     return y;
 }
 
@@ -1066,7 +1097,11 @@ double* test_asr_process(double* data, int size, double srate, ASR_PSW* the_ASR,
                 }
             }
         }
+        free(filter_X);
+
         double** return_val = moving_average(N, input_x, C*C, S, the_ASR->the_state.cov);
+        free(input_x);
+
         double* Xcov = return_val[0];
         the_ASR->the_state.cov = return_val[1];
 
@@ -1116,6 +1151,7 @@ double* test_asr_process(double* data, int size, double srate, ASR_PSW* the_ASR,
                 new_Xcov[j][k] = Xcov[k*S + column];
             }
         }
+        free(Xcov);
 
         for(int j=0; j<len_update_at; j++)
         {
@@ -1254,7 +1290,6 @@ double* test_asr_process(double* data, int size, double srate, ASR_PSW* the_ASR,
 
                         answer[k][l-subrange_start] = temp*blend[l - subrange_start] + temp2*(1-blend[l - subrange_start]);
                     }
-                    printf("123");
                 }
                 for(int k=0; k<C; k++)
                 {
@@ -1282,7 +1317,30 @@ double* test_asr_process(double* data, int size, double srate, ASR_PSW* the_ASR,
             free(V);
             free(D);
         }
+        free(update_at);
     }
+
+    for(int i=0; i<C; i++)
+    {
+        for(int j=0; j<P; j++)
+        {
+            the_ASR->the_state.carry[i*P + j] = new_data[i*new_column + new_column-2*P+j];
+        }
+    }
+
+    double* outdata = (double*)malloc(C*(new_column-P) * sizeof(double));
+    unsigned long long int index_dst = 0;
+    unsigned long long int index_src = 0;
+    for(int i=0; i<C; i++)
+    {
+        memcpy(outdata+index_dst, new_data+index_src, (new_column-P) * sizeof(double));
+        index_dst += (new_column-P);
+        index_src += new_column;
+    }
+
+    free(new_data);
+    return outdata;
+
 }
 
 double** moving_average(int N, double** X, int x_row, int x_column, double* Zi)

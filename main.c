@@ -120,7 +120,13 @@ int main()
     ASR_PSW my_ASR = create_ASR(20, sampling_rate, channels);
     my_ASR.data_length = 48000;
 
-    update_ASR(&my_ASR, unclean_data);
+    // update_ASR(&my_ASR, unclean_data);
+
+    int seq_size = my_ASR.data_length/(20*my_ASR.sampling_rate);
+    int seq[seq_size];
+    for(int i=0,j=0; i<seq_size; i++,j+=(20*my_ASR.sampling_rate))
+        seq[i] = j;
+
 
     double* data_processed = reconstruct(&my_ASR, unclean_data);
 

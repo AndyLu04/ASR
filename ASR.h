@@ -13,7 +13,7 @@ typedef struct state
 
 typedef struct ASR_PSW
 {
-    double sampling_rate;
+    int sampling_rate;
     double cutoff;
     double filter_A[9];
     double filter_B[9];
