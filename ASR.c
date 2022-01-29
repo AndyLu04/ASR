@@ -154,16 +154,16 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
     double p_n[19] = {true, false, false, true, true, true, true, true, false, true, true, false, false, false, false, true, false, false, true};
 
     // for making P/N equal to matlab result
-    for(int i=0; i<the_ASR->channels; i++)
-    {
-        if((p_n[i] && (V[i*the_ASR->channels] < 0)) || (!p_n[i] && (V[i*the_ASR->channels] > 0)))
-        {
-            for(int j=0; j<the_ASR->channels; j++)
-            {
-                V[i*the_ASR->channels + j] = -V[i*the_ASR->channels + j];
-            }
-        }
-    }
+//    for(int i=0; i<the_ASR->channels; i++)
+//    {
+//        if((p_n[i] && (V[i*the_ASR->channels] < 0)) || (!p_n[i] && (V[i*the_ASR->channels] > 0)))
+//        {
+//            for(int j=0; j<the_ASR->channels; j++)
+//            {
+//                V[i*the_ASR->channels + j] = -V[i*the_ASR->channels + j];
+//            }
+//        }
+//    }
 
     double** new_X = (double**)malloc(S * sizeof(double*));
     for(int i=0; i<S; i++)
@@ -264,6 +264,8 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
         free(new_X[i]);
     free(new_X);
 
+    free(the_eigen->eigen_value);
+    free(the_eigen->eigen_vector);
 }
 
 find_clean_ASR_return_val find_clean_ASR(ASR_PSW* the_ASR, double** data)
@@ -460,6 +462,7 @@ find_clean_ASR_return_val find_clean_ASR(ASR_PSW* the_ASR, double** data)
 
 double* test_eeg_dist_revi(double* origin_X, int X_size, double min_clean_fraction, double max_dropout_fraction, double* quants, double* step_sizes, double* beta)
 {
+    int MAX1 = 0x7fffffff;
     if(min_clean_fraction == -777)
         min_clean_fraction = 0.25;
     if(max_dropout_fraction == -777)
@@ -579,24 +582,29 @@ double* test_eeg_dist_revi(double* origin_X, int X_size, double min_clean_fracti
         }
     }
 
-    int m[44];
+    int temp_m[44];
     double j=0.578;
     for(int i=0; i<44; i++, j-=step_sizes[1])
     {
-        m[i] = round(j*n);
+        temp_m[i] = round(j*n);
     }
-    int new_size = remove_duplicated(m, 44); // now m is a new_size big array with no duplicated element
+    int new_size = remove_duplicated(temp_m, 44); // now m is a new_size big array with no duplicated element
 
-    qsort(m, (size_t)44, sizeof(int), icomp);
+    qsort(temp_m, (size_t)new_size, sizeof(int), icomp);
+
+    int m[new_size];
+    memcpy(m, temp_m, new_size*sizeof(int));
 
     double opt_val = MAX1;
     double opt_beta = 0;
     double opt_bounds[2];
     double opt_lu[2];
-
+    int the_m = 0;
     for(int i=0; i<new_size; i++)
     {
-        int nbins = round(3 * log2(1 + m[i]/2));
+        the_m = m[i];
+
+        int nbins = round(3 * log2(1 + m[i]/(double)2));
 
         double divide[11];
         for(int j=0; j<11; j++)
@@ -604,16 +612,7 @@ double* test_eeg_dist_revi(double* origin_X, int X_size, double min_clean_fracti
             divide[j] = nbins/new_X[m[i]-1][j];
         }
 
-        int the_m = m[i];
         double H[the_m][11];
-        for(int j=0; j<the_m; j++)
-        {
-            for(int k=0; k<11; k++)
-            {
-               H[j][k] = 0;
-            }
-        }
-
         for(int j=0; j<the_m; j++)
         {
             for(int k=0; k<11; k++)
@@ -656,7 +655,7 @@ double* test_eeg_dist_revi(double* origin_X, int X_size, double min_clean_fracti
             }
         }
 
-        for(int j=0; j<the_m; j++)
+        for(int j=0; j<nbins + 1; j++)
         {
             for(int k=0; k<11; k++)
             {
@@ -779,8 +778,6 @@ double* test_eeg_dist_revi(double* origin_X, int X_size, double min_clean_fracti
         opt_bounds[1] = b_t[idx_b][1];
         opt_lu[0] = X1[idx[idx_b]];
         opt_lu[1] = X1[idx[idx_b]] + new_X[m[i]-1][idx[idx_b]];
-
-//        printf("the_m: %d\nopt_val: %f\nopt_beta: %f\nopt_bounds: %f %f\nopt_lu: %f %f\n\n", the_m, opt_val, opt_beta, opt_bounds[0], opt_bounds[1], opt_lu[0], opt_lu[1]);
     }
 
     double alpha = (opt_lu[1] - opt_lu[0]) / (opt_bounds[1] - opt_bounds[0]);
@@ -817,19 +814,20 @@ double** covInASR(ASR_PSW* the_ASR, int C, int S, double** data)
         }
     }
 
-    int* range = (int*)malloc(length * sizeof(int));
-    for(int k=0; k<blocksize; k++)
+    for(int k=1; k<=blocksize; k++)
     {
         length = 0;
-        for(int i=1; i<=S+k-1; i+=blocksize)
+        for(int i=k; i<=S+k-1; i+=blocksize)
         {
             length += 1;
         }
+
+        int* range = (int*)malloc(length * sizeof(int));
         for(int i=0; i<length; i++)
         {
-            if(S > ((k + 1) + i*10))
+            if(S > (k + i*10))
             {
-                range[i] = (k + 1) + i*10;
+                range[i] = k + i*10;
             }
             else
             {
@@ -893,9 +891,9 @@ double** covInASR(ASR_PSW* the_ASR, int C, int S, double** data)
             free(temp2[i]);
         }
         free(temp2);
-    }
 
-    free(range);
+        free(range);
+    }
 
     for(int i=0; i<length; i++)
     {

@@ -122,11 +122,24 @@ int main()
 
     // update_ASR(&my_ASR, unclean_data);
 
-    int seq_size = my_ASR.data_length/(20*my_ASR.sampling_rate);
-    int seq[seq_size];
-    for(int i=0,j=0; i<seq_size; i++,j+=(20*my_ASR.sampling_rate))
-        seq[i] = j;
+    int seg_size = my_ASR.data_length/(20*my_ASR.sampling_rate);
+    int seg[seg_size];
+    for(int i=0, j=0; i<seg_size; i++, j+=(20*my_ASR.sampling_rate))
+        seg[i] = j;
 
+    int index_src;
+    for(int i=0; i<seg_size-1; i++)
+    {
+        my_ASR.data_length = 20*my_ASR.sampling_rate+1;
+        index_src = seg[i];
+        double** temp_data = (double**)malloc(my_ASR.channels * sizeof(double*));
+        for(int j=0; j<my_ASR.channels; j++)
+        {
+            temp_data[j] = (double*)malloc(my_ASR.data_length * sizeof(double));
+            memcpy(temp_data[j], unclean_data[j]+index_src, my_ASR.data_length * sizeof(double));
+        }
+        subspace_ASR(&my_ASR, temp_data);
+    }
 
     double* data_processed = reconstruct(&my_ASR, unclean_data);
 
