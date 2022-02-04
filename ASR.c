@@ -64,14 +64,14 @@ double* reconstruct(ASR_PSW* the_ASR, double** data)
         last_times_two[i] = 2 * data[i][the_ASR->data_length-1];
     }
 
-    double* sig = (double*)malloc(the_ASR->channels * (the_ASR->data_length + end_size) * sizeof(double));
+    double* sig = (double*)malloc(the_ASR->channels * new_size * sizeof(double));
     for(int i=0; i<the_ASR->channels; i++)
     {
         for(int j=0; j<the_ASR->data_length; j++)
         {
             sig[i*new_size + j] = data[i][j];
         }
-        for(int j=the_ASR->data_length, k=1; j<the_ASR->data_length+substract_val; j++, k++)
+        for(int j=the_ASR->data_length, k=1; j<new_size; j++, k++)
         {
             sig[i*new_size + j] = last_times_two[i] - sig[i*new_size - 1 + the_ASR->data_length - k ];
         }

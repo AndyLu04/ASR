@@ -141,9 +141,10 @@ int main()
         subspace_ASR(&my_ASR, temp_data);
     }
 
+    my_ASR.data_length = 48000;
     double* data_processed = reconstruct(&my_ASR, unclean_data);
 
-
+    write_data_to_file("data_processed.csv", data_processed, my_ASR.channels, my_ASR.data_length);
     //dft_r2c_1d(256);
 
     return 0;

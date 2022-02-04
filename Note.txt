@@ -18,10 +18,13 @@ use lapack:
 	5. Type this command :
 		cp make.inc.example make.inc
 	6. Type this command :
+		(require gfortran command installed)
 		make blaslib
 	7. Type this command :
 		make lapacklib
-	8. It is Done. Now make it link:
+	8. install libopenblas-dev:
+		sudo apt-get install libopenblas-dev
+	9. (optional)It is Done. Now make it link:
 		sudo ln -s $HOME/lapack-3.9.0/librefblas.a /usr/local/lib/libblas.a
 		sudo ln -s $HOME/lapack-3.9.0/liblapack.a /usr/local/lib/liblapack.a
 
