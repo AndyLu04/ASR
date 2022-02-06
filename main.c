@@ -144,8 +144,9 @@ int main()
     }
 
     my_ASR.data_length = 48000;
-    printf("start reconsruct\n");
+    printf("start reconstruct\n");
     double* data_processed = reconstruct(&my_ASR, unclean_data);
+    printf("finished reconstruct\n");
 
     write_data_to_file("data_processed.csv", data_processed, my_ASR.channels, my_ASR.data_length);
     //dft_r2c_1d(256);
