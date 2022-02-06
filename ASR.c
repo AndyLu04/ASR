@@ -791,7 +791,7 @@ double* test_eeg_dist_revi(double* origin_X, int X_size, double min_clean_fracti
     return mu_and_sig;
 }
 
-double** covInASR(ASR_PSW* the_ASR, int C, int S, double** data)
+double* covInASR(ASR_PSW* the_ASR, int C, int S, double** data)
 {
     int blocksize = 10;
     int length = 1;
