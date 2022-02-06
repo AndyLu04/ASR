@@ -116,6 +116,7 @@ int main()
     double** unclean_data = read_data("data_unclean.csv", 19, 48000);
 
 
+    printf("start create ASR\n");
     // create ASR
     ASR_PSW my_ASR = create_ASR(20, sampling_rate, channels);
     my_ASR.data_length = 48000;
@@ -139,9 +140,11 @@ int main()
             memcpy(temp_data[j], unclean_data[j]+index_src, my_ASR.data_length * sizeof(double));
         }
         subspace_ASR(&my_ASR, temp_data);
+        printf("subspace %d\n", i);
     }
 
     my_ASR.data_length = 48000;
+    printf("start reconsruct\n");
     double* data_processed = reconstruct(&my_ASR, unclean_data);
 
     write_data_to_file("data_processed.csv", data_processed, my_ASR.channels, my_ASR.data_length);

@@ -1557,7 +1557,7 @@ double* inverse(double* data, int N)
     double* pinv = (double*)malloc(size * sizeof(double));
     memcpy(pinv, server_reply, size * sizeof(double));
 
-    printf("close Socket\n");
+    //printf("close Socket\n");
     close(sockfd);
 
     return pinv;
