@@ -870,8 +870,8 @@ double* covInASR(ASR_PSW* the_ASR, int C, int S, double** data)
         {
             for(int j=0; j<C*C; j++)
             {
-                int column = j%19;
-                int hight = j/19;
+                int column = j%C;
+                int hight = j/C;
                 U[i][j] = U[i][j] + temp2[i][column][hight];
             }
         }
@@ -1144,7 +1144,7 @@ double* test_asr_process(double* data, int size, double srate, ASR_PSW* the_ASR,
         for(int j=0, column=0; j<len_update_at; j++)
         {
             column = update_at[j];
-            for(int k=0; k<361; k++)
+            for(int k=0; k<C*C; k++)
             {
                 new_Xcov[j][k] = Xcov[k*S + column];
             }
@@ -1173,7 +1173,11 @@ double* test_asr_process(double* data, int size, double srate, ASR_PSW* the_ASR,
                 }
             }
             bool trivial = true;
-            bool keep[19] = {true};
+            bool keep[C];
+            for(int k=0; k<C; k++)
+            {
+                keep[k] = true;
+            }
             for(int k=0; k<C; k++)
             {
                 for(int l=1; l<C; l++)
@@ -1382,7 +1386,7 @@ double** moving_average(int N, double** X, int x_row, int x_column, double* Zi)
     }
 
     double* Zf = (double*)malloc(row*N * sizeof(double));
-    for(int i=0; i<N; i++)
+    for(int i=0; i<row; i++)
     {
         Zf[i*N] = -(new_X[i*x_column+x_column-1]*N - Y[i*(zero_size+x_column) + zero_size+x_column-N]);
     }
