@@ -31,7 +31,7 @@ typedef struct find_clean_ASR_return_val
     int column_size;
 } find_clean_ASR_return_val;
 
-ASR_PSW create_ASR(int cutoff, int sampling_rate, int channels);
+ASR_PSW create_ASR(int cutoff, int sampling_rate, int channels, double* filter_A_value, double* filter_B_value);
 
 void update_ASR(ASR_PSW* the_ASR, double** data);
 

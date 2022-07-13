@@ -1,7 +1,7 @@
 #include "ASR.h"
 #include "sqrtm.h"
 
-ASR_PSW create_ASR(int cutoff, int sampling_rate, int channels)
+ASR_PSW create_ASR(int cutoff, int sampling_rate, int channels, double* filter_A_value, double* filter_B_value)
 {
     ASR_PSW the_ASR;
     the_ASR.sampling_rate = sampling_rate;
@@ -21,11 +21,6 @@ ASR_PSW create_ASR(int cutoff, int sampling_rate, int channels)
 
     if((sampling_rate/2 - 1) > 80)
     {
-        ;
-        double filter_A_value[9] = {1, -0.991323609939396, 0.315956314546930, -0.0708347481677546, -0.0558793822071134,
-                                    -0.253961902647894, 0.247305661525119, -0.0420478437473110, 0.00774557183344621};
-        double filter_B_value[9] = {1.44894833258029, -2.66925147648027, 2.08139706207309, -0.973667887704926,
-                                    0.105460506035271, -0.188910169231485, 0.611133163659227, -0.361648301307508, 0.183431306077666};
         for(int i=0; i<9; i++)
         {
             the_ASR.filter_A[i] = filter_A_value[i];
@@ -84,7 +79,7 @@ double* reconstruct(ASR_PSW* the_ASR, double** data)
     int new_column = new_size-carry_size;
     double* data_ASR = malloc(the_ASR->channels*new_column * sizeof(double));
     int index_dst = 0;
-    int index_src = 50;
+    int index_src = carry_size;
     for(int i=0; i<the_ASR->channels; i++)
     {
         memcpy(data_ASR+index_dst, return_data+index_src, new_column * sizeof(double));
@@ -200,7 +195,7 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
         }
 
         int size = floor((S-N-1)/(N*(1-window_overlap)) + 1);
-        int diff = N*(1-window_overlap);
+        int diff = round(N*(1-window_overlap));
         int tmp1[size];
         for(int i=0; i<size; i++)
         {
@@ -271,7 +266,7 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
 find_clean_ASR_return_val find_clean_ASR(ASR_PSW* the_ASR, double** data)
 {
     int clwin_window_len = 1;
-    double window_overlap = 0.66;
+    float window_overlap = 0.66;
 
     int row = the_ASR->channels;
     int length = the_ASR->data_length;
@@ -288,7 +283,7 @@ find_clean_ASR_return_val find_clean_ASR(ASR_PSW* the_ASR, double** data)
     int offset_size = 1 + (the_ASR->data_length-N)/(the_ASR->sampling_rate*(1-window_overlap));
     int offsets[offset_size];
 
-    for(int i=1, j=0; i<the_ASR->data_length-N; i+=the_ASR->sampling_rate*(1-window_overlap), j++)
+    for(int i=1, j=0; i<the_ASR->data_length-N; i+=round(the_ASR->sampling_rate*(1-window_overlap)), j++)
     {
         offsets[j] = i;
     }
@@ -1265,9 +1260,17 @@ double* test_asr_process(double* data, int size, double srate, ASR_PSW* the_ASR,
             int n = update_at[j];
             if(!trivial || !the_ASR->the_state.last_trivial)
             {
-                int subrange_start = last_n+1;
+                int subrange_start;
+                if(n != 0)
+                    subrange_start = last_n+1;
+                else
+                    subrange_start = 0;
                 int subrange_end = n;
-                int blend_size = n-last_n;
+                int blend_size;
+                if(n != 0)
+                    blend_size = n-last_n;
+                else
+                    blend_size = 1;
                 double* blend = (double*)malloc(blend_size * sizeof(double));
                 double pi = acos(-1);
                 for(int k=0; k< blend_size; k++)
