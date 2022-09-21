@@ -15,6 +15,8 @@ typedef struct ASR_PSW
 {
     int sampling_rate;
     double cutoff;
+    double window_len;
+    double win_overlap;
     double filter_A[9];
     double filter_B[9];
     double* M;
@@ -31,9 +33,7 @@ typedef struct find_clean_ASR_return_val
     int column_size;
 } find_clean_ASR_return_val;
 
-ASR_PSW create_ASR(int cutoff, int sampling_rate, int channels, double* filter_A_value, double* filter_B_value);
-
-void update_ASR(ASR_PSW* the_ASR, double** data);
+ASR_PSW create_ASR(int cutoff, double window_len, double win_overlap, int sampling_rate, int channels, double* filter_A_value, double* filter_B_value);
 
 void subspace_ASR(ASR_PSW* the_ASR, double** data);
 
@@ -64,3 +64,5 @@ double** moving_average(int N, double** X, int x_row, int x_column, double* Zi);
 void write_data_to_file(char file_name[], double* data, int row_size, int column_size);
 
 double* inverse(double* A, int N);
+
+void* MW_ASR(void* argv);

@@ -1,11 +1,14 @@
 #include "ASR.h"
 #include "sqrtm.h"
+#include "queue.h"
 
-ASR_PSW create_ASR(int cutoff, int sampling_rate, int channels, double* filter_A_value, double* filter_B_value)
+ASR_PSW create_ASR(int cutoff, double window_len, double win_overlap, int sampling_rate, int channels, double* filter_A_value, double* filter_B_value)
 {
     ASR_PSW the_ASR;
     the_ASR.sampling_rate = sampling_rate;
     the_ASR.cutoff = cutoff;
+    the_ASR.window_len = window_len;
+    the_ASR.win_overlap = win_overlap;
     the_ASR.channels = channels;
     the_ASR.M = NULL;
     the_ASR.T = NULL;
@@ -36,19 +39,10 @@ ASR_PSW create_ASR(int cutoff, int sampling_rate, int channels, double* filter_A
     return the_ASR;
 }
 
-void update_ASR(ASR_PSW* the_ASR, double** data)
-{
-    if(!the_ASR->M)
-    {
-        subspace_ASR(the_ASR, data);
-    }
-
-}
-
 double* reconstruct(ASR_PSW* the_ASR, double** data)
 {
     int availableRAM_GB = 8;
-    double asr_windowlen = 0.5;
+    double asr_windowlen = the_ASR->window_len;
     int substract_val = round(asr_windowlen * the_ASR->sampling_rate / 2);
     int end_size = the_ASR->data_length - substract_val;
     int new_size = the_ASR->data_length + substract_val;
@@ -102,9 +96,9 @@ void subspace_ASR(ASR_PSW* the_ASR, double** data)
     double** X = return_val.X;
     int S = return_val.column_size;
 
-    double window_len = 0.5;
+    double window_len = the_ASR->window_len;
     double min_clean_fraction = 0.25;
-    double window_overlap = 0.66;
+    double window_overlap = the_ASR->win_overlap;
     double max_dropout_fraction = 0.1;
 
 
@@ -1531,6 +1525,7 @@ void write_data_to_file(char file_name[], double* data, int row_size, int column
 
 double* inverse(double* data, int N)
 {
+
     int sockfd = 0;
     sockfd = socket(AF_INET , SOCK_STREAM , 0);
 
